@@ -39,3 +39,9 @@
   for = "/favicon.svg"
   [headers.values]
     Cache-Control = "public, max-age=604800"
+
+# Netlify lo sirve como octet-stream y algunos navegadores lo ignoran
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
