@@ -28,3 +28,14 @@
   for = "/js/*"
   [headers.values]
     Cache-Control = "public, max-age=86400"
+
+# Iconos e imagen social: cambian muy poco, se cachean una semana
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/favicon.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

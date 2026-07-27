@@ -16,9 +16,27 @@ rodtech-site/
 │   ├── app.js          Preloader, canvas de partículas, auroras, scrollspy, reveals
 │   │                   con ScrollTrigger, tilt 3D, botones magnéticos, modal de demos
 │   └── demos.js        successScreen() + el objeto DEMOS (6 mini-apps interactivas)
-├── netlify.toml        Configuración de despliegue (sitio estático, sin build)
+├── favicon.svg         Monograma R con el degradado de marca (fuente de los iconos)
+├── og-image.png        1200×630, previsualización al compartir el enlace
+├── site.webmanifest    Nombre, colores e iconos al instalar el sitio en el celular
+├── sitemap.xml         Una sola URL (sitio de una página)
+├── robots.txt          Indexación permitida
+├── netlify.toml        Despliegue, cabeceras de seguridad y política de caché
 └── .gitignore
 ```
+
+### Si cambias el dominio
+
+La URL aparece de forma absoluta en cuatro lugares — hay que actualizarlos juntos:
+`index.html` (canonical, `og:url`, `og:image`, `twitter:image` y el JSON-LD),
+`sitemap.xml`, `robots.txt` y este README.
+
+### Cómo se regeneraron los PNG
+
+`og-image.png` y los iconos salen de SVG convertidos con
+[sharp](https://sharp.pixelplumbing.com/). El SVG fuente de la imagen social y el
+script de conversión no viven en el repo (son de un solo uso); si necesitas
+rehacerlos, basta con volver a exportar desde `favicon.svg` a 32, 180, 192 y 512 px.
 
 Sitio 100% estático: no hay paso de compilación ni dependencias que instalar.
 
