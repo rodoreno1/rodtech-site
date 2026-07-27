@@ -21,3 +21,6 @@ desktop.ini
 .env
 .env.*
 !.env.example
+
+# Maquetas de exploracion de diseno (no publicar)
+_mockups/

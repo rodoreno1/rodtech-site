@@ -9,12 +9,12 @@ Fundador: Rodolfo David Bautista Reyes · WhatsApp [+52 953 134 2851](https://wa
 
 ```
 rodtech-site/
-├── index.html          Markup: nav, barra de pestañas, las 6 vistas y el modal de demos
+├── index.html          Markup: nav fija con scrollspy, secciones one-page y el modal de demos
 ├── css/
 │   └── styles.css      Todos los estilos (variables de color, layout, animaciones CSS)
 ├── js/
-│   ├── app.js          Preloader, canvas de partículas, auroras, pestañas, tilt 3D,
-│   │                   botones magnéticos, apertura/cierre del modal
+│   ├── app.js          Preloader, canvas de partículas, auroras, scrollspy, reveals
+│   │                   con ScrollTrigger, tilt 3D, botones magnéticos, modal de demos
 │   └── demos.js        successScreen() + el objeto DEMOS (6 mini-apps interactivas)
 ├── netlify.toml        Configuración de despliegue (sitio estático, sin build)
 └── .gitignore
@@ -45,8 +45,8 @@ npx serve rodtech-site
 
 ## Tecnologías
 
-- **GSAP 3.12.5 + ScrollTrigger** — preloader, transición entre pestañas, píldora
-  deslizante, tilt 3D de tarjetas, botones magnéticos, auroras flotantes.
+- **GSAP 3.12.5 + ScrollTrigger** — preloader, reveals de secciones al hacer scroll,
+  tilt 3D de tarjetas, botones magnéticos, auroras flotantes.
 - **anime.js 3.2.2** — trazado del circuito SVG del hero, palabra rotativa letra por
   letra, iconos con rebote elástico, letras del logo que saltan.
 - **Canvas** — fondo global de partículas conectadas que reaccionan al cursor.

@@ -15,6 +15,7 @@
   <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
 </div>
 
+<div id="grain"></div>
 <div id="glow"></div>
 <canvas id="net"></canvas>
 <div class="aurora aurora-1"></div>
@@ -23,32 +24,19 @@
 
 <nav>
   <div class="nav-inner">
-    <a class="logo" href="#">Rod<span>Tech</span></a>
-    <div class="nav-links">
+    <a class="logo" href="#inicio">Rod<span>Tech</span></a>
+    <div class="nav-links" id="navLinks">
       <a href="#servicios">Servicios</a>
-      <a href="#ideas">Ideas</a>
-      <a href="#proceso">Cómo trabajamos</a>
+      <a href="#ideas">Demos</a>
+      <a href="#proceso">Proceso</a>
       <a href="#problemas">Casos</a>
       <a class="nav-cta" href="#contacto">Agenda una llamada</a>
     </div>
   </div>
 </nav>
 
-<div class="tabbar">
-  <div class="tabbar-inner" id="tabbarInner">
-    <div class="tab-pill" id="tabPill"></div>
-    <button class="tab-link active" data-target="inicio">Inicio</button>
-    <button class="tab-link" data-target="servicios">Servicios</button>
-    <button class="tab-link" data-target="ideas">Ideas y demos</button>
-    <button class="tab-link" data-target="proceso">Proceso</button>
-    <button class="tab-link" data-target="problemas">Casos</button>
-    <button class="tab-link" data-target="contacto">Contacto</button>
-  </div>
-</div>
-
-<main id="views">
-<div class="view active" data-view="inicio">
-<header class="hero">
+<main>
+<header class="hero" id="inicio">
   <svg class="circuit" viewBox="0 0 600 500" aria-hidden="true">
     <path class="c-violet" d="M20 250 H160 L220 190 H340 L400 250 H560"/>
     <path class="c-neon"   d="M60 120 H200 L260 180 H420 L470 130 H580"/>
@@ -64,7 +52,7 @@
     <circle class="c-violet" cx="400" cy="250" r="6"/>
   </svg>
   <div class="wrap hero-content">
-    <span class="mono reveal">RodTech · Tecnología a la medida</span>
+    <span class="eyebrow mono reveal">Tecnología a la medida · México</span>
     <h1>
       <span class="line"><span>Tecnología a la medida</span></span>
       <span class="line"><span>para que tu negocio</span></span>
@@ -73,7 +61,7 @@
     <p class="reveal">Escuchamos lo que tu negocio necesita — automatizar, vender en línea, conectar sistemas, o esa idea que nadie te ha podido construir — y la hacemos realidad.</p>
     <div class="hero-actions reveal">
       <a class="btn btn-neon" href="#contacto">Cuéntanos tu proceso</a>
-      <a class="btn btn-ghost" href="#servicios">Ver servicios</a>
+      <a class="btn btn-ghost" href="#ideas">Ver demos en vivo</a>
     </div>
   </div>
   <div class="scroll-hint">↓</div>
@@ -93,47 +81,54 @@
     <span>Sistemas a la medida</span><span class="solid">✦</span>
   </div>
 </div>
-</div>
 
-<div class="view" data-view="servicios">
 <section id="servicios">
   <div class="wrap">
     <div class="section-head">
-      <span class="mono">Servicios</span>
-      <h2>Si tu negocio lo necesita,<br><span class="neon-text">lo construimos</span></h2>
+      <div>
+        <span class="mono">· Servicios</span>
+        <h2>Si tu negocio lo necesita,<br><span class="neon-text">lo construimos</span></h2>
+      </div>
+      <p class="side">Desde el flujo que corre solo hasta la app que usan tus clientes todos los días.</p>
     </div>
     <div class="services-grid">
       <div class="service">
+        <span class="tag mono">01 / Automatización</span>
         <div class="icon">⚙️</div>
         <h3>Automatización de procesos</h3>
         <p>Convertimos tareas repetitivas — capturar pedidos, enviar correos, actualizar hojas de cálculo — en flujos que corren solos.</p>
         <div class="example"><b>Ejemplo:</b> cada pedido que llega por WhatsApp se registra solo en tu sistema y genera la orden de compra al proveedor.</div>
       </div>
       <div class="service">
+        <span class="tag mono">02 / Sistemas</span>
         <div class="icon">🛠️</div>
         <h3>Sistemas a la medida</h3>
         <p>Aplicaciones diseñadas para cómo trabaja tu negocio, no plantillas genéricas a las que te tienes que adaptar.</p>
         <div class="example"><b>Ejemplo:</b> un sistema de citas para tu clínica o barbería con recordatorios automáticos que reducen las ausencias.</div>
       </div>
       <div class="service">
+        <span class="tag mono">03 / Apps</span>
         <div class="icon">📱</div>
         <h3>Apps web y móviles</h3>
         <p>Desde la app interna para tu equipo hasta la aplicación que tus clientes descargan y usan todos los días.</p>
         <div class="example"><b>Ejemplo:</b> una app donde tus repartidores ven sus rutas del día y marcan cada entrega con foto y firma.</div>
       </div>
       <div class="service">
+        <span class="tag mono">04 / E-commerce</span>
         <div class="icon">🛒</div>
         <h3>Tiendas en línea</h3>
         <p>Lleva tu negocio al mundo digital: catálogo, pagos, envíos y todo lo que necesitas para vender por internet.</p>
         <div class="example"><b>Ejemplo:</b> tu catálogo completo en línea con pagos con tarjeta y aviso automático a tu bodega para preparar el envío.</div>
       </div>
       <div class="service">
+        <span class="tag mono">05 / Integraciones</span>
         <div class="icon">🔗</div>
         <h3>Conexión entre herramientas</h3>
         <p>Tu punto de venta, inventario, contabilidad y proveedores hablando entre sí, sin capturas dobles.</p>
         <div class="example"><b>Ejemplo:</b> cada venta en tu punto de venta descuenta inventario y se registra en tu contabilidad sin capturar nada dos veces.</div>
       </div>
       <div class="service">
+        <span class="tag mono">06 / Paneles</span>
         <div class="icon">📊</div>
         <h3>Paneles de control</h3>
         <p>Ventas, inventario y pendientes en una sola pantalla, en tiempo real, desde tu celular o computadora.</p>
@@ -142,14 +137,15 @@
     </div>
   </div>
 </section>
-</div>
 
-<div class="view" data-view="ideas">
 <section id="ideas">
   <div class="wrap">
     <div class="section-head">
-      <span class="mono">Ideas por tipo de negocio</span>
-      <h2>¿Qué podríamos construir<br><span class="neon-text">para tu negocio?</span></h2>
+      <div>
+        <span class="mono">· Ideas por tipo de negocio</span>
+        <h2>¿Qué podríamos construir<br><span class="neon-text">para tu negocio?</span></h2>
+      </div>
+      <p class="side">Haz clic en tu giro y prueba una mini-app real, funcionando en tu pantalla.</p>
     </div>
     <div class="biz-grid">
       <div class="biz" data-demo="restaurante">
@@ -209,14 +205,14 @@
     </div>
   </div>
 </section>
-</div>
 
-<div class="view" data-view="proceso">
 <section class="process" id="proceso">
   <div class="wrap">
     <div class="section-head">
-      <span class="mono">Cómo trabajamos</span>
-      <h2>Primero escuchamos,<br><span class="neon-text">después construimos</span></h2>
+      <div>
+        <span class="mono">· Cómo trabajamos</span>
+        <h2>Primero escuchamos,<br><span class="neon-text">después construimos</span></h2>
+      </div>
     </div>
     <div class="steps">
       <div class="progress-line"><div class="progress-fill" id="progressFill"></div></div>
@@ -238,14 +234,14 @@
     </div>
   </div>
 </section>
-</div>
 
-<div class="view" data-view="problemas">
 <section id="problemas">
   <div class="wrap">
     <div class="section-head">
-      <span class="mono">Casos que resolvemos</span>
-      <h2>¿Te suena familiar?</h2>
+      <div>
+        <span class="mono">· Casos que resolvemos</span>
+        <h2>¿Te suena familiar?</h2>
+      </div>
     </div>
     <div class="problems-list">
       <div class="problem">
@@ -291,12 +287,10 @@
     </div>
   </div>
 </section>
-</div>
 
-<div class="view" data-view="contacto">
 <div class="cta-section" id="contacto">
   <div class="cta">
-    <span class="mono">Agenda una llamada</span>
+    <span class="eyebrow mono">Agenda una llamada</span>
     <h2>Cuéntanos qué<br><span class="neon-text">necesita tu negocio</span></h2>
     <p>La primera conversación es gratuita. Escuchamos tu necesidad o tu idea, te decimos cómo la construiríamos y cuánto costaría. Sin compromiso.</p>
     <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
@@ -306,12 +300,15 @@
     <p style="margin-top:26px;font-size:0.95rem;color:var(--muted);position:relative;z-index:1">También por correo: <a href="mailto:hola@rodtech.com" style="color:var(--neon);text-decoration:none">hola@rodtech.com</a></p>
   </div>
 </div>
-</div>
 </main>
 
 <footer>
+  <div class="footer-giant">
+    <span class="word">RodTech</span>
+    <span class="mono">WhatsApp +52 953 134 2851 · hola@rodtech.com</span>
+  </div>
   <div class="wrap footer-inner">
-    <a class="logo" href="#">Rod<span style="color:var(--neon)">Tech</span></a>
+    <a class="logo" href="#inicio">Rod<span style="color:var(--neon)">Tech</span></a>
     <p>© 2026 RodTech · Tecnología a la medida de tu negocio · Fundada por Rodolfo David Bautista Reyes · 📞 <a href="tel:+529531342851" style="color:var(--neon);text-decoration:none">+52 953 134 2851</a></p>
   </div>
 </footer>

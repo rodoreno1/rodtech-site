@@ -12,6 +12,7 @@ function heroIntro(){
   if(reduced) return;
   gsap.from(".hero h1 .line > span",{yPercent:110,duration:0.95,stagger:0.13,ease:"power3.out"});
   gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.15,delay:0.45,ease:"power2.out"});
+  gsap.from(".giant-marquee",{opacity:0,duration:1,delay:0.8,ease:"power2.out"});
   gsap.to(".scroll-hint",{y:10,repeat:-1,yoyo:true,duration:0.8,ease:"sine.inOut"});
 }
 
@@ -150,74 +151,55 @@ document.querySelectorAll(".service").forEach(card=>{
   });
 });
 
-/* ==================== SISTEMA DE PESTAÑAS ==================== */
-const views = {};
-document.querySelectorAll(".view").forEach(v=>views[v.dataset.view]=v);
-const tabLinks = document.querySelectorAll(".tab-link");
-const pill = document.getElementById("tabPill");
-let currentView = "inicio";
-
-function movePill(btn,instant){
-  const parent = btn.parentElement.getBoundingClientRect();
-  const r = btn.getBoundingClientRect();
-  const props = {x:r.left-parent.left, width:r.width, duration:instant?0:0.45, ease:"back.out(1.6)"};
-  reduced||instant ? gsap.set(pill,{x:props.x,width:props.width}) : gsap.to(pill,props);
+/* ==================== SCROLLSPY: resalta la sección activa en el nav ==================== */
+const spyLinks = [...document.querySelectorAll('#navLinks a[href^="#"]:not(.nav-cta)')];
+const spySections = ["servicios","ideas","proceso","problemas","contacto"]
+  .map(id=>({id, el:document.getElementById(id)}))
+  .filter(s=>s.el);
+function updateSpy(){
+  const y = scrollY + innerHeight*0.4;
+  let current = "";
+  for(const s of spySections){ if(s.el.offsetTop <= y) current = s.id; }
+  spyLinks.forEach(a=>a.classList.toggle("active", a.getAttribute("href")==="#"+current));
 }
+addEventListener("scroll",updateSpy,{passive:true});
+addEventListener("resize",updateSpy);
+updateSpy();
 
-function animateViewIn(view){
-  if(reduced) return;
-  const targets = view.querySelectorAll(
-    ".hero .mono,.hero h1 .line,.hero p,.hero-actions,.giant-marquee,.section-head,.service,.biz,.step,.problem,.cta");
-  gsap.fromTo(targets,
-    {opacity:0,y:44,scale:0.985},
-    {opacity:1,y:0,scale:1,duration:0.65,stagger:0.07,ease:"power3.out",clearProps:"scale"});
-  const pf = view.querySelector("#progressFill");
-  if(pf) gsap.fromTo(pf,{width:"0%"},{width:"100%",duration:1.6,delay:0.5,ease:"power2.inOut"});
-  /* anime.js: los iconos entran con rebote elástico escalonado */
-  const icons = view.querySelectorAll(".icon,.biz-icon,.step .display");
-  if(icons.length){
-    anime.remove(icons);
-    anime({targets:icons,scale:[0.3,1],rotate:[-14,0],opacity:[0,1],
-      delay:anime.stagger(80,{start:280}),duration:900,easing:"easeOutElastic(1,.55)"});
-  }
-  if(view.dataset.view==="inicio") drawCircuit();
+/* ==================== REVEALS AL HACER SCROLL (GSAP + anime.js) ==================== */
+if(!reduced){
+  /* Encabezados de sección */
+  gsap.utils.toArray(".section-head, .cta").forEach(el=>{
+    gsap.from(el,{opacity:0,y:40,duration:0.8,ease:"power3.out",
+      scrollTrigger:{trigger:el,start:"top 86%",once:true}});
+  });
+  /* Tarjetas y filas, en lotes con stagger */
+  ScrollTrigger.batch(".service,.biz,.step,.problem",{
+    start:"top 90%",
+    once:true,
+    onEnter:els=>{
+      gsap.fromTo(els,
+        {opacity:0,y:44,scale:0.985},
+        {opacity:1,y:0,scale:1,duration:0.65,stagger:0.08,ease:"power3.out",clearProps:"scale"});
+      /* anime.js: iconos y números entran con rebote elástico */
+      const icons = [];
+      els.forEach(el=>icons.push(...el.querySelectorAll(".icon,.biz-icon,.step .display")));
+      if(icons.length){
+        anime.remove(icons);
+        anime({targets:icons,scale:[0.3,1],rotate:[-14,0],opacity:[0,1],
+          delay:anime.stagger(80,{start:200}),duration:900,easing:"easeOutElastic(1,.55)"});
+      }
+    }
+  });
+  /* Línea de progreso del proceso */
+  ScrollTrigger.create({
+    trigger:"#proceso",start:"top 70%",once:true,
+    onEnter:()=>gsap.fromTo("#progressFill",{width:"0%"},{width:"100%",duration:1.6,ease:"power2.inOut"})
+  });
+  /* Footer gigante */
+  gsap.from(".footer-giant .word",{opacity:0,y:60,duration:1,ease:"power3.out",
+    scrollTrigger:{trigger:".footer-giant",start:"top 90%",once:true}});
 }
-
-function showView(name){
-  if(!views[name] || name===currentView) return;
-  const oldV = views[currentView], newV = views[name];
-  currentView = name;
-  tabLinks.forEach(b=>b.classList.toggle("active",b.dataset.target===name));
-  const activeBtn = [...tabLinks].find(b=>b.dataset.target===name);
-  movePill(activeBtn);
-  activeBtn.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
-  const swap = ()=>{
-    oldV.classList.remove("active");
-    newV.classList.add("active");
-    window.scrollTo({top:0,behavior:"instant"});
-    animateViewIn(newV);
-  };
-  if(reduced){ swap(); return; }
-  gsap.to(oldV,{opacity:0,y:-24,duration:0.22,ease:"power2.in",onComplete:()=>{
-    gsap.set(oldV,{clearProps:"all"});
-    swap();
-  }});
-}
-
-tabLinks.forEach(b=>b.addEventListener("click",()=>showView(b.dataset.target)));
-movePill(document.querySelector(".tab-link.active"),true);
-addEventListener("resize",()=>movePill(document.querySelector(".tab-link.active"),true));
-
-/* Los enlaces internos (menú, botones del hero) también cambian de pestaña */
-document.querySelectorAll('a[href^="#"]').forEach(a=>{
-  const target = a.getAttribute("href").slice(1);
-  if(views[target]){
-    a.addEventListener("click",e=>{e.preventDefault();showView(target);});
-  }
-});
-
-/* Animación inicial de la vista de inicio tras el preloader */
-setTimeout(()=>{ if(!reduced) animateViewIn(views.inicio); }, 1500);
 
 /* ==================== TILT 3D EN TARJETAS ==================== */
 if(!reduced && matchMedia("(hover:hover)").matches){
