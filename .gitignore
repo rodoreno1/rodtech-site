@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Builds y caché de plataformas
+.netlify/
+.vercel/
+dist/
+.cache/
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Entorno
+.env
+.env.*
+!.env.example

@@ -1,0 +1,4 @@
+[build]
+  # Sitio estático: no hay paso de compilación, se publica la raíz del repo.
+  publish = "."
+  command = ""
