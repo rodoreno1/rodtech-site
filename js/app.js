@@ -250,6 +250,7 @@ const demoTitle = document.getElementById("demoTitle");
 const money = n => "$" + n.toLocaleString("es-MX",{minimumFractionDigits:2});
 
 function openDemo(id){
+  if(typeof clearDemoTimers==="function") clearDemoTimers();
   demoTitle.textContent = DEMOS[id].title;
   frame.innerHTML = "";
   DEMOS[id].render(frame);
@@ -259,6 +260,9 @@ function openDemo(id){
 function closeDemo(){
   overlay.classList.remove("open");
   document.body.style.overflow = "";
+  /* Detiene comandas, chats y notificaciones pendientes del demo abierto */
+  if(typeof clearDemoTimers==="function") clearDemoTimers();
+  document.querySelectorAll(".dapp-toast").forEach(t=>t.remove());
 }
 document.getElementById("demoClose").addEventListener("click",closeDemo);
 overlay.addEventListener("click",e=>{ if(e.target===overlay) closeDemo(); });
