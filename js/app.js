@@ -119,8 +119,11 @@ function heroIntro(){
      rotador, que tiene su propia animación letra a letra con anime.js */
   document.querySelectorAll(".hero h1 .line[data-blur]").forEach((line,i)=>
     blurTextIn(line, i*0.18));
+  /* clearProps es importante: sin el, .rotator-box se queda con un
+     transform inline que lo promueve a capa propia, y al reemplazar las
+     letras dentro quedaba pintada la capa vieja de la primera letra. */
   gsap.from(".hero h1 .line:not([data-blur]) > span",
-    {yPercent:110,duration:0.95,delay:0.5,ease:"power3.out"});
+    {yPercent:110,duration:0.95,delay:0.5,ease:"power3.out",clearProps:"transform"});
   gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.15,delay:0.75,ease:"power2.out"});
   gsap.from(".smarquee",{opacity:0,duration:1,delay:1.1,ease:"power2.out"});
   gsap.to(".scroll-hint",{y:10,repeat:-1,yoyo:true,duration:0.8,ease:"sine.inOut"});
@@ -130,24 +133,45 @@ function heroIntro(){
 const words = ["automatice procesos","venda en línea","conecte sus sistemas","atienda mejor a sus clientes","crezca sin límites"];
 let wi = 0;
 const rot = document.getElementById("rotator");
+/* replaceChildren en vez de innerHTML: sustituye todos los nodos en una
+   sola operacion, en lugar de reparsear HTML mientras anime.js todavia
+   tiene transforms vivos encima de las letras que se van. */
 function setWord(w){
-  rot.innerHTML = w.split("").map(ch=>
-    `<span class="rl">${ch===" "?"&nbsp;":ch}</span>`).join("");
+  const frag = document.createDocumentFragment();
+  for(const ch of w){
+    const s = document.createElement("span");
+    s.className = "rl";
+    s.textContent = ch === " " ? " " : ch;
+    frag.appendChild(s);
+  }
+  rot.replaceChildren(frag);
+  return [...rot.children];
 }
 setWord(words[0]);
 if(!reduced){
-  anime({targets:"#rotator .rl",translateY:[18,0],opacity:[0,1],
+  anime({targets:[...rot.children],translateY:[18,0],opacity:[0,1],
     delay:anime.stagger(24),duration:500,easing:"easeOutCubic"});
-  setInterval(()=>{
-    anime({targets:"#rotator .rl",translateY:[0,-18],opacity:[1,0],
+
+  /* Cadena de setTimeout en lugar de setInterval. Con setInterval, una
+     pestana en segundo plano acumula disparos y al volver se lanzan varias
+     animaciones a la vez sobre los mismos nodos; ahi es donde una letra
+     del texto anterior se quedaba congelada. Encadenado, un ciclo no puede
+     empezar hasta que el anterior termino. */
+  const rotateOnce = () => {
+    const salen = [...rot.children];
+    anime.remove(salen);
+    anime({targets:salen,translateY:[0,-18],opacity:[1,0],
       delay:anime.stagger(14),duration:280,easing:"easeInCubic",
       complete:()=>{
-        wi=(wi+1)%words.length;
-        setWord(words[wi]);
-        anime({targets:"#rotator .rl",translateY:[18,0],opacity:[0,1],
-          delay:anime.stagger(24),duration:480,easing:"easeOutCubic"});
+        wi = (wi+1) % words.length;
+        const entran = setWord(words[wi]);
+        anime.remove(entran);
+        anime({targets:entran,translateY:[18,0],opacity:[0,1],
+          delay:anime.stagger(24),duration:480,easing:"easeOutCubic",
+          complete:()=>setTimeout(rotateOnce,2200)});
       }});
-  },3000);
+  };
+  setTimeout(rotateOnce,2600);
 }
 
 /* ---------- CIRCUITO SVG: se dibuja solo (anime.js) ---------- */
