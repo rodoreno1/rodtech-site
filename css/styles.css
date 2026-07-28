@@ -32,6 +32,17 @@ h1,h2,.display{
   animation:flow 6s ease-in-out infinite alternate;
 }
 @keyframes flow{to{background-position:100% center}}
+/* blurTextIn parte el texto en <span class="bw"> inline-block. Un
+   inline-block no recibe el background-clip:text del padre, así que
+   cada palabra tiene que llevarse su propio degradado o se ve
+   transparente sobre transparente (invisible). `inherit` hace que
+   respete también el degradado oscuro de .section-light. */
+.neon-text .bw{
+  background-image:inherit;
+  background-size:200% auto;
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;
+}
 
 /* ==================== LIQUID GLASS ====================
    Cristal esmerilado con borde de luz. El borde no es un `border`:
@@ -280,23 +291,43 @@ nav{
 }
 .logo .ll{display:inline-block}
 
-/* ---------- GIANT MARQUEE ---------- */
-.giant-marquee{
-  overflow:hidden;white-space:nowrap;padding:36px 0;
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  position:relative;z-index:2;background:rgba(16,8,34,0.5);backdrop-filter:blur(6px);
+/* ---------- MARQUEE REACTIVO AL SCROLL ----------
+   Dos filas que se cruzan: la de arriba avanza y la de abajo retrocede,
+   ambas en función de cuánto has bajado en la página. */
+.smarquee{
+  padding:70px 0 60px;position:relative;z-index:2;overflow:hidden;
+  display:flex;flex-direction:column;gap:12px;
 }
-.giant-inner{display:inline-block;animation:scroll 30s linear infinite}
-.giant-inner span{
-  font-family:'Anton',sans-serif;font-size:clamp(2.2rem,5vw,4rem);
-  text-transform:uppercase;margin:0 36px;
-  color:transparent;-webkit-text-stroke:1px rgba(167,139,250,0.45);
+.smarquee-row{display:flex;gap:12px;width:max-content;will-change:transform}
+.stile{
+  width:300px;height:190px;border-radius:1.25rem;flex-shrink:0;
+  padding:0;overflow:hidden;cursor:pointer;
+  display:flex;flex-direction:column;text-align:left;
+  font-family:inherit;color:inherit;
+  transition:transform .3s ease;
 }
-.giant-inner span.solid{
-  color:var(--neon);-webkit-text-stroke:0;font-size:1.5rem;vertical-align:middle;
-  text-shadow:0 0 20px rgba(43,240,228,0.7);
+.stile:hover{transform:translateY(-6px)}
+.stile-top{
+  background:linear-gradient(120deg,#5B2EBF,#8B5CF6);
+  padding:12px 14px;display:flex;align-items:center;gap:9px;flex-shrink:0;
 }
-@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.stile-top .em{font-size:1.15rem;line-height:1}
+.stile-top b{color:#fff;font-size:0.82rem;font-weight:700}
+.stile-body{padding:11px 12px;display:flex;flex-direction:column;gap:7px;flex:1}
+.stile-line{
+  height:26px;border-radius:8px;background:rgba(255,255,255,0.07);
+  display:flex;align-items:center;padding:0 10px;
+  font-size:0.68rem;color:rgba(244,241,255,0.75);
+}
+.stile-line i{
+  font-style:normal;margin-left:auto;color:var(--neon);font-weight:700;font-size:0.66rem;
+}
+.stile-foot{
+  padding:9px 12px;font-family:'Space Mono',monospace;font-size:0.6rem;
+  letter-spacing:0.14em;text-transform:uppercase;color:var(--neon);
+  border-top:1px solid rgba(255,255,255,0.07);
+}
+@media(max-width:640px){.stile{width:230px;height:165px}}
 
 /* ---------- SECTIONS ---------- */
 section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
@@ -394,20 +425,65 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
   box-shadow:0 0 14px rgba(43,240,228,0.8);
 }
 
-/* ---------- PROBLEMS ---------- */
-.problem{
-  display:grid;grid-template-columns:auto 1fr auto;gap:28px;align-items:center;
-  padding:36px 4px;border-bottom:1px solid var(--line);
-  transition:background .25s ease,padding-left .25s ease;
+/* ---------- SECCIÓN CLARA (corte de ritmo) ----------
+   Se monta sobre la sección oscura anterior con esquinas redondeadas. */
+.section-light{
+  background:#F4F4FA;color:#16132B;
+  border-radius:44px 44px 0 0;
+  margin-top:-40px;position:relative;z-index:3;
+  padding:120px 0 130px;
+  border-top:none;
 }
-.problem:first-of-type{border-top:1px solid var(--line)}
-.problem:hover{background:rgba(21,11,46,0.35);padding-left:26px}
-.problem .mono{color:var(--neon)}
-.problem h3{font-size:1.22rem;font-weight:600}
-.problem p{font-size:0.94rem;color:var(--muted);margin-top:6px}
-.problem .arrow{font-size:1.5rem;color:var(--pink);transition:transform .25s ease}
-.problem:hover .arrow{transform:translateX(10px)}
-@media(max-width:620px){.problem{grid-template-columns:1fr;gap:10px}.problem .arrow{display:none}}
+.section-light .section-head .mono{color:#7A3FD6}
+.section-light .section-head h2{color:#0F0C1F}
+/* El degradado de marca es de pasteles claros: sobre fondo claro
+   desaparece, así que aquí va una versión saturada y oscura. */
+.section-light .neon-text{
+  background-image:linear-gradient(95deg,#6D28D9 0%,#0E9AAE 52%,#C0208F 100%);
+}
+.section-light .section-head .side{color:#5A5580}
+.section-light .step h3{color:#16132B}
+.section-light .step p{color:#5A5580}
+.section-light .step .display{-webkit-text-stroke:1.5px rgba(91,46,191,0.45);color:transparent}
+.section-light .progress-line{background:rgba(91,46,191,0.18)}
+.section-light .progress-fill{background:linear-gradient(90deg,#7C3AED,#22B5C8);box-shadow:none}
+@media(max-width:640px){.section-light{border-radius:30px 30px 0 0;padding:90px 0 100px}}
+
+/* ---------- TARJETAS QUE SE APILAN AL HACER SCROLL ----------
+   Cada tarjeta se queda pegada y la siguiente le pasa por encima;
+   las de abajo se encogen un poco para dar profundidad al montón. */
+.stack{position:relative;z-index:3}
+.stack-item{
+  height:78vh;min-height:440px;
+  display:flex;align-items:flex-start;justify-content:center;
+  position:relative;
+}
+.stack-card{
+  position:sticky;
+  width:100%;max-width:1000px;
+  border-radius:32px;
+  padding:52px 46px;
+  transform-origin:top center;
+  display:grid;grid-template-columns:auto 1fr auto;gap:30px;align-items:start;
+}
+.stack-card .num{
+  font-family:'Anton',sans-serif;font-size:clamp(2.6rem,7vw,5.2rem);line-height:0.85;
+  color:transparent;-webkit-text-stroke:1.5px rgba(139,92,246,0.55);
+}
+.stack-card h3{font-size:clamp(1.25rem,2.6vw,1.9rem);font-weight:600;line-height:1.15}
+.stack-card p{color:var(--muted);margin-top:14px;font-size:1rem;max-width:44ch}
+.stack-card .tag{
+  color:var(--neon);white-space:nowrap;align-self:center;
+}
+@media(max-width:760px){
+  .stack-item{height:auto;min-height:0;margin-bottom:16px}
+  .stack-card{position:relative;grid-template-columns:1fr;gap:14px;padding:34px 26px;transform:none!important}
+  .stack-card .tag{align-self:start}
+}
+
+/* ---------- REVELADO LETRA POR LETRA AL HACER SCROLL ---------- */
+.chreveal{color:var(--text)}
+.chreveal .ch{opacity:0.18;transition:none}
 
 /* ---------- CTA ---------- */
 .cta-section{padding:150px 28px;scroll-margin-top:70px;position:relative;z-index:2}

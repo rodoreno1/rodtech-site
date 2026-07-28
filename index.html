@@ -157,19 +157,10 @@
   <div class="scroll-hint">↓</div>
 </header>
 
-<div class="giant-marquee" aria-hidden="true">
-  <div class="giant-inner">
-    <span>Automatización</span><span class="solid">✦</span>
-    <span>Apps</span><span class="solid">✦</span>
-    <span>Tiendas en línea</span><span class="solid">✦</span>
-    <span>Integraciones</span><span class="solid">✦</span>
-    <span>Sistemas a la medida</span><span class="solid">✦</span>
-    <span>Automatización</span><span class="solid">✦</span>
-    <span>Apps</span><span class="solid">✦</span>
-    <span>Tiendas en línea</span><span class="solid">✦</span>
-    <span>Integraciones</span><span class="solid">✦</span>
-    <span>Sistemas a la medida</span><span class="solid">✦</span>
-  </div>
+<!-- Las fichas se generan en app.js a partir de TILES y abren el demo real -->
+<div class="smarquee" id="smarquee">
+  <div class="smarquee-row" id="smRow1"></div>
+  <div class="smarquee-row" id="smRow2"></div>
 </div>
 
 <section id="servicios">
@@ -296,7 +287,7 @@
   </div>
 </section>
 
-<section class="process" id="proceso">
+<section class="process section-light" id="proceso">
   <div class="wrap">
     <div class="section-head">
       <div>
@@ -332,47 +323,58 @@
         <span class="mono">· Casos que resolvemos</span>
         <h2 data-blur>¿Te suena familiar?</h2>
       </div>
+      <p class="side chreveal" id="casosIntro">Lo que escuchamos una y otra vez de dueños de negocio. Si alguna te describe, ya sabemos por dónde empezar.</p>
     </div>
-    <div class="problems-list">
-      <div class="problem">
-        <span class="mono">Caso A</span>
-        <div>
-          <h3>"Pierdo la mañana entera contactando distribuidores"</h3>
-          <p>Un sistema que envía tus pedidos a todos tus proveedores automáticamente y te avisa cuando confirman.</p>
+    <div class="stack" id="casosStack">
+      <div class="stack-item">
+        <div class="stack-card liquid-glass">
+          <div class="num">01</div>
+          <div>
+            <h3>"Pierdo la mañana entera contactando distribuidores"</h3>
+            <p>Un sistema que envía tus pedidos a todos tus proveedores automáticamente y te avisa cuando confirman.</p>
+          </div>
+          <span class="tag mono">Automatización</span>
         </div>
-        <span class="arrow">→</span>
       </div>
-      <div class="problem">
-        <span class="mono">Caso B</span>
-        <div>
-          <h3>"Las órdenes se hacen a mano y siempre hay errores"</h3>
-          <p>El pedido entra una vez y llega correcto a inventario, facturación y entrega.</p>
+      <div class="stack-item">
+        <div class="stack-card liquid-glass">
+          <div class="num">02</div>
+          <div>
+            <h3>"Las órdenes se hacen a mano y siempre hay errores"</h3>
+            <p>El pedido entra una vez y llega correcto a inventario, facturación y entrega.</p>
+          </div>
+          <span class="tag mono">Integraciones</span>
         </div>
-        <span class="arrow">→</span>
       </div>
-      <div class="problem">
-        <span class="mono">Caso C</span>
-        <div>
-          <h3>"Quiero vender por internet pero no sé por dónde empezar"</h3>
-          <p>Tu tienda en línea completa: catálogo, pagos, envíos y conectada con tu inventario desde el día uno.</p>
+      <div class="stack-item">
+        <div class="stack-card liquid-glass">
+          <div class="num">03</div>
+          <div>
+            <h3>"Quiero vender por internet pero no sé por dónde empezar"</h3>
+            <p>Tu tienda en línea completa: catálogo, pagos, envíos y conectada con tu inventario desde el día uno.</p>
+          </div>
+          <span class="tag mono">Tienda en línea</span>
         </div>
-        <span class="arrow">→</span>
       </div>
-      <div class="problem">
-        <span class="mono">Caso D</span>
-        <div>
-          <h3>"Tengo una idea para mi negocio pero nadie me la ha podido hacer"</h3>
-          <p>Nos cuentas tu idea, la aterrizamos juntos y la construimos exactamente como la necesitas.</p>
+      <div class="stack-item">
+        <div class="stack-card liquid-glass">
+          <div class="num">04</div>
+          <div>
+            <h3>"Tengo una idea para mi negocio pero nadie me la ha podido hacer"</h3>
+            <p>Nos cuentas tu idea, la aterrizamos juntos y la construimos exactamente como la necesitas.</p>
+          </div>
+          <span class="tag mono">A la medida</span>
         </div>
-        <span class="arrow">→</span>
       </div>
-      <div class="problem">
-        <span class="mono">Caso E</span>
-        <div>
-          <h3>"Mis clientes me piden algo más profesional para hacer pedidos"</h3>
-          <p>Una app o portal donde tus clientes ven productos, hacen pedidos y dan seguimiento sin llamarte.</p>
+      <div class="stack-item">
+        <div class="stack-card liquid-glass">
+          <div class="num">05</div>
+          <div>
+            <h3>"Mis clientes me piden algo más profesional para hacer pedidos"</h3>
+            <p>Una app o portal donde tus clientes ven productos, hacen pedidos y dan seguimiento sin llamarte.</p>
+          </div>
+          <span class="tag mono">Portal / App</span>
         </div>
-        <span class="arrow">→</span>
       </div>
     </div>
   </div>

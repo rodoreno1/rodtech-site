@@ -122,7 +122,7 @@ function heroIntro(){
   gsap.from(".hero h1 .line:not([data-blur]) > span",
     {yPercent:110,duration:0.95,delay:0.5,ease:"power3.out"});
   gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.15,delay:0.75,ease:"power2.out"});
-  gsap.from(".giant-marquee",{opacity:0,duration:1,delay:1.1,ease:"power2.out"});
+  gsap.from(".smarquee",{opacity:0,duration:1,delay:1.1,ease:"power2.out"});
   gsap.to(".scroll-hint",{y:10,repeat:-1,yoyo:true,duration:0.8,ease:"sine.inOut"});
 }
 
@@ -261,6 +261,112 @@ document.querySelectorAll(".service").forEach(card=>{
   });
 });
 
+/* ==================== MARQUEE REACTIVO AL SCROLL ====================
+   Fichas que representan cada demo. Al hacer clic abren el demo real,
+   así que la decoración también sirve de puerta de entrada. */
+const TILES = [
+  {id:"restaurante",  em:"🍽️", n:"La Cocina de Rosa",       rows:[["Tacos de pastor","$95"],["Agua del día","$45"],["Flan napolitano","$55"]], foot:"Menú digital · Mesa 4"},
+  {id:"ferreteria",   em:"🔩", n:"Ferretería El Tornillo",  rows:[["Cemento gris 50 kg","$238"],["Varilla 3/8","$165"],["Tubo PVC 4\"","$210"]], foot:"Cotizador · COT-871"},
+  {id:"farmacia",     em:"💊", n:"Farmacia San Miguel",     rows:[["Caduca en 12 días","⏰"],["Stock bajo","📦"],["Pedido sugerido","🤖"]], foot:"Panel de control"},
+  {id:"distribuidora",em:"🚚", n:"Distribuidora del Centro",rows:[["Aceite vegetal 1L","$310"],["Atún en agua","$620"],["Crédito disponible","42%"]], foot:"Portal de clientes"},
+  {id:"boutique",     em:"👗", n:"Boutique Alma",           rows:[["Vestido floral","$549"],["Chamarra mezclilla","$729"],["Apartado A-217","✓"]], foot:"Catálogo + apartados"},
+  {id:"taller",       em:"🔧", n:"Taller Rodríguez",        rows:[["Orden A-1042","70%"],["Balatas delanteras","$1,250"],["Chat con el taller","💬"]], foot:"Estatus en vivo"}
+];
+
+function buildTile(t){
+  const b = document.createElement("button");
+  b.className = "stile liquid-glass";
+  b.type = "button";
+  b.setAttribute("aria-label","Abrir demo de "+t.n);
+  b.dataset.demo = t.id;
+  b.innerHTML =
+    `<div class="stile-top"><span class="em">${t.em}</span><b>${t.n}</b></div>
+     <div class="stile-body">
+       ${t.rows.map(([a,c])=>`<div class="stile-line">${a}<i>${c}</i></div>`).join("")}
+     </div>
+     <div class="stile-foot">${t.foot}</div>`;
+  b.addEventListener("click",()=>openDemo(t.id));
+  return b;
+}
+
+(function initMarquee(){
+  const wrap = document.getElementById("smarquee");
+  const row1 = document.getElementById("smRow1");
+  const row2 = document.getElementById("smRow2");
+  if(!wrap || !row1 || !row2) return;
+
+  /* Se triplica cada fila para que nunca se vea el final del carrete */
+  const setA = [TILES[0],TILES[1],TILES[2]];
+  const setB = [TILES[3],TILES[4],TILES[5]];
+  for(let i=0;i<3;i++){
+    setA.forEach(t=>row1.appendChild(buildTile(t)));
+    setB.forEach(t=>row2.appendChild(buildTile(t)));
+  }
+
+  if(reduced) return;   /* sin movimiento: las fichas se quedan quietas */
+
+  let ticking = false;
+  function place(){
+    ticking = false;
+    const rect = wrap.getBoundingClientRect();
+    /* Solo trabaja mientras la sección está cerca del viewport */
+    if(rect.bottom < -200 || rect.top > innerHeight + 200) return;
+    const offset = (innerHeight - rect.top) * 0.3;
+    row1.style.transform = `translateX(${offset - 400}px)`;
+    row2.style.transform = `translateX(${-(offset - 400)}px)`;
+  }
+  function onScroll(){ if(!ticking){ ticking = true; requestAnimationFrame(place); } }
+  addEventListener("scroll",onScroll,{passive:true});
+  addEventListener("resize",place);
+  place();
+})();
+
+/* ==================== TARJETAS QUE SE APILAN ====================
+   Cada tarjeta se queda pegada arriba y se encoge conforme la siguiente
+   sube: da la sensación de un montón de fichas en perspectiva. */
+(function initStack(){
+  const stack = document.getElementById("casosStack");
+  if(!stack) return;
+  const items = [...stack.querySelectorAll(".stack-item")];
+  const cards = items.map(it=>it.querySelector(".stack-card"));
+  const total = cards.length;
+
+  /* El desfase vertical es lo que deja ver el canto de las de abajo */
+  cards.forEach((card,i)=>{ card.style.top = `calc(110px + ${i*16}px)`; });
+
+  if(reduced || innerWidth <= 760) return;
+
+  items.forEach((item,i)=>{
+    if(i === total - 1) return;   /* la última no se encoge */
+    const targetScale = 1 - (total - 1 - i) * 0.03;
+    gsap.fromTo(cards[i],{scale:1},{
+      scale:targetScale, ease:"none",
+      scrollTrigger:{trigger:item,start:"top 110px",endTrigger:items[total-1],end:"top 260px",scrub:true}
+    });
+  });
+})();
+
+/* ==================== REVELADO LETRA POR LETRA ====================
+   La opacidad de cada letra sigue el avance del scroll: el texto se
+   "enciende" de izquierda a derecha mientras lees. */
+(function initCharReveal(){
+  document.querySelectorAll(".chreveal").forEach(el=>{
+    const text = el.textContent;
+    el.textContent = "";
+    const chars = [...text].map(ch=>{
+      const s = document.createElement("span");
+      s.className = "ch";
+      s.textContent = ch;
+      if(ch === " ") s.style.whiteSpace = "pre";
+      el.appendChild(s);
+      return s;
+    });
+    if(reduced){ gsap.set(chars,{opacity:1}); return; }
+    gsap.to(chars,{opacity:1,ease:"none",stagger:0.5,
+      scrollTrigger:{trigger:el,start:"top 85%",end:"bottom 55%",scrub:true}});
+  });
+})();
+
 /* ==================== SCROLLSPY: resalta la sección activa en el nav ==================== */
 const spyLinks = [...document.querySelectorAll('#navLinks a[href^="#"]:not(.nav-cta)')];
 const spySections = ["servicios","ideas","proceso","problemas","contacto"]
@@ -295,7 +401,9 @@ if(!reduced){
     }
   });
   /* Tarjetas y filas, en lotes con stagger */
-  ScrollTrigger.batch(".service,.biz,.step,.problem",{
+  /* Las .stack-card quedan fuera a propósito: ya tienen su propio scrub
+     de escala y una segunda animación de opacidad las haría pelear */
+  ScrollTrigger.batch(".service,.biz,.step",{
     start:"top 90%",
     once:true,
     onEnter:els=>{
