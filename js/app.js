@@ -1,6 +1,111 @@
 gsap.registerPlugin(ScrollTrigger);
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/* ==================== VIDEO DE FONDO CON CROSSFADE ====================
+   El bucle es manual (sin el atributo `loop`) para poder desvanecer el
+   final contra el principio: sin esto se ve un corte seco en cada vuelta.
+   La opacidad la mueve requestAnimationFrame, nunca una transición CSS,
+   porque cada fade debe poder arrancar desde donde quedó el anterior. */
+const HERO_VIDEO_SRC = "video/hero.mp4";
+
+function fadingVideo(video, src){
+  const FADE_MS = 500, FADE_OUT_LEAD = 0.55;
+  let rafId = null, fadingOut = false;
+
+  function fadeTo(target, duration){
+    if(rafId) cancelAnimationFrame(rafId);
+    const from = parseFloat(video.style.opacity) || 0;
+    const t0 = performance.now();
+    (function step(now){
+      const p = duration <= 0 ? 1 : Math.min(1,(now - t0) / duration);
+      video.style.opacity = String(from + (target - from) * p);
+      rafId = p < 1 ? requestAnimationFrame(step) : null;
+    })(t0);
+  }
+
+  const onLoaded = ()=>{
+    video.style.opacity = "0";
+    const pr = video.play();
+    if(pr && pr.catch) pr.catch(()=>{});   /* autoplay bloqueado: no es fatal */
+    fadeTo(1, FADE_MS);
+  };
+  const onTime = ()=>{
+    const left = video.duration - video.currentTime;
+    if(!fadingOut && video.duration && left <= FADE_OUT_LEAD && left > 0){
+      fadingOut = true;
+      fadeTo(0, FADE_MS);
+    }
+  };
+  const onEnded = ()=>{
+    video.style.opacity = "0";
+    setTimeout(()=>{
+      video.currentTime = 0;
+      const pr = video.play();
+      if(pr && pr.catch) pr.catch(()=>{});
+      fadingOut = false;
+      fadeTo(1, FADE_MS);
+    },100);
+  };
+
+  video.addEventListener("loadeddata",onLoaded);
+  video.addEventListener("timeupdate",onTime);
+  video.addEventListener("ended",onEnded);
+  video.src = src;
+}
+
+/* Solo se enciende si el archivo existe de verdad; si no, se queda el
+   fondo de partículas y nadie ve un hueco negro. */
+(function initHeroVideo(){
+  const wrap = document.getElementById("heroVideoWrap");
+  const video = document.getElementById("heroVideo");
+  if(!wrap || !video || reduced) return;
+  video.addEventListener("error",()=>{
+    wrap.hidden = true;
+    document.body.classList.remove("has-hero-video");
+  },{once:true});
+  video.addEventListener("loadeddata",()=>{
+    wrap.hidden = false;
+    document.body.classList.add("has-hero-video");
+  },{once:true});
+  fadingVideo(video, HERO_VIDEO_SRC);
+})();
+
+/* ==================== BLUR TEXT: entrada palabra por palabra ====================
+   Recorre los nodos de texto para no destruir el marcado interno
+   (los <br> y el <span class="neon-text"> del degradado sobreviven). */
+function splitIntoWords(el){
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  while(walker.nextNode()) textNodes.push(walker.currentNode);
+  const words = [];
+  textNodes.forEach(node=>{
+    if(!node.textContent.trim()) return;
+    const frag = document.createDocumentFragment();
+    node.textContent.split(/(\s+)/).forEach(part=>{
+      if(!part) return;
+      if(/^\s+$/.test(part)){ frag.appendChild(document.createTextNode(part)); return; }
+      const s = document.createElement("span");
+      s.className = "bw";
+      s.textContent = part;
+      frag.appendChild(s);
+      words.push(s);
+    });
+    node.parentNode.replaceChild(frag, node);
+  });
+  return words;
+}
+
+function blurTextIn(el, delay){
+  if(reduced) return;
+  const words = splitIntoWords(el);
+  if(!words.length) return;
+  gsap.set(words,{filter:"blur(10px)",opacity:0,y:50});
+  gsap.timeline({delay:delay||0})
+    .to(words,{filter:"blur(5px)",opacity:0.5,y:-5,duration:0.35,ease:"power2.out",stagger:0.1})
+    .to(words,{filter:"blur(0px)",opacity:1,y:0,duration:0.35,ease:"power2.out",stagger:0.1,
+      clearProps:"filter,transform"}, 0.35);
+}
+
 /* ---------- PRELOADER ---------- */
 const loader = document.getElementById("loader");
 gsap.to("#loaderFill",{width:"100%",duration:0.9,ease:"power2.inOut",onComplete:()=>{
@@ -10,9 +115,14 @@ gsap.to("#loaderFill",{width:"100%",duration:0.9,ease:"power2.inOut",onComplete:
 
 function heroIntro(){
   if(reduced) return;
-  gsap.from(".hero h1 .line > span",{yPercent:110,duration:0.95,stagger:0.13,ease:"power3.out"});
-  gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.15,delay:0.45,ease:"power2.out"});
-  gsap.from(".giant-marquee",{opacity:0,duration:1,delay:0.8,ease:"power2.out"});
+  /* Las dos primeras líneas entran palabra por palabra; la tercera es el
+     rotador, que tiene su propia animación letra a letra con anime.js */
+  document.querySelectorAll(".hero h1 .line[data-blur]").forEach((line,i)=>
+    blurTextIn(line, i*0.18));
+  gsap.from(".hero h1 .line:not([data-blur]) > span",
+    {yPercent:110,duration:0.95,delay:0.5,ease:"power3.out"});
+  gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.15,delay:0.75,ease:"power2.out"});
+  gsap.from(".giant-marquee",{opacity:0,duration:1,delay:1.1,ease:"power2.out"});
   gsap.to(".scroll-hint",{y:10,repeat:-1,yoyo:true,duration:0.8,ease:"sine.inOut"});
 }
 
@@ -168,10 +278,21 @@ updateSpy();
 
 /* ==================== REVEALS AL HACER SCROLL (GSAP + anime.js) ==================== */
 if(!reduced){
-  /* Encabezados de sección */
+  /* Encabezados de sección: el h2 entra palabra por palabra, el resto en bloque */
   gsap.utils.toArray(".section-head, .cta").forEach(el=>{
-    gsap.from(el,{opacity:0,y:40,duration:0.8,ease:"power3.out",
-      scrollTrigger:{trigger:el,start:"top 86%",once:true}});
+    const h2 = el.querySelector("h2");
+    if(h2){
+      ScrollTrigger.create({trigger:el,start:"top 86%",once:true,
+        onEnter:()=>blurTextIn(h2)});
+      gsap.from([...el.children].filter(c=>c!==h2).concat(
+        [...(h2.parentElement===el?[]:[h2.parentElement])].filter(Boolean)
+          .flatMap(p=>[...p.children].filter(c=>c!==h2))),
+        {opacity:0,y:40,duration:0.8,ease:"power3.out",
+         scrollTrigger:{trigger:el,start:"top 86%",once:true}});
+    } else {
+      gsap.from(el,{opacity:0,y:40,duration:0.8,ease:"power3.out",
+        scrollTrigger:{trigger:el,start:"top 86%",once:true}});
+    }
   });
   /* Tarjetas y filas, en lotes con stagger */
   ScrollTrigger.batch(".service,.biz,.step,.problem",{

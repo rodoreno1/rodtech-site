@@ -16,6 +16,7 @@ rodtech-site/
 │   ├── app.js          Preloader, canvas de partículas, auroras, scrollspy, reveals
 │   │                   con ScrollTrigger, tilt 3D, botones magnéticos, modal de demos
 │   └── demos.js        successScreen() + el objeto DEMOS (6 mini-apps interactivas)
+├── video/              Deja aquí hero.mp4 y el fondo cinematográfico se activa
 ├── favicon.svg         Monograma R con el degradado de marca (fuente de los iconos)
 ├── og-image.png        1200×630, previsualización al compartir el enlace
 ├── site.webmanifest    Nombre, colores e iconos al instalar el sitio en el celular
@@ -60,6 +61,20 @@ navegadores restringen ciertas cosas). Con Node instalado:
 ```bash
 npx serve rodtech-site
 ```
+
+## Sistema de diseño: liquid glass
+
+Las superficies (nav, tarjetas, CTA, chips) usan `.liquid-glass` o
+`.liquid-glass-strong`. El borde luminoso **no es un `border`**: es un
+`::before` con un degradado vertical recortado con `mask-composite: exclude`,
+de modo que la luz es intensa arriba y abajo y se apaga a media altura —
+imitando cómo un canto de vidrio real atrapa la luz.
+
+Como el pseudo-elemento ocupa toda la caja, el contenido lleva
+`position:relative; z-index:2` para quedar por encima.
+
+Estas clases necesitan algo detrás que desenfocar: funcionan gracias al canvas
+de partículas, las auroras y (si lo agregas) el video del hero.
 
 ## Tecnologías
 
