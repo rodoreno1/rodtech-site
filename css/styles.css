@@ -290,7 +290,11 @@ nav{
 .circuit .c-pink{stroke:var(--pink)}
 .circuit circle{fill:var(--void);stroke-width:1.5}
 @media(max-width:900px){.circuit{display:none}}
-#rotator .rl{
+/* Dos capas a proposito: animar `transform` sobre un elemento que ademas
+   usa background-clip:text deja restos de pintado en Chrome (era la letra
+   congelada). Asi .rl solo se mueve y .rl-g solo pinta el degradado. */
+#rotator .rl{display:inline-block}
+#rotator .rl-g{
   display:inline-block;
   background:linear-gradient(95deg,var(--violet-soft),var(--neon) 55%,var(--pink));
   -webkit-background-clip:text;background-clip:text;color:transparent;

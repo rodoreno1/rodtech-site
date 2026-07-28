@@ -18,16 +18,20 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# CSS y JS pueden cachearse un día (no llevan hash en el nombre)
+# CSS y JS: siempre revalidar. Los nombres no llevan hash de contenido, así
+# que con max-age largo quien ya visitó el sitio seguiría ejecutando la
+# versión vieja durante horas después de cada despliegue. Con
+# must-revalidate el navegador pregunta cada vez y recibe un 304 barato
+# mientras el archivo no cambie.
 [[headers]]
   for = "/css/*"
   [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/js/*"
   [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 # Iconos e imagen social: cambian muy poco, se cachean una semana
 [[headers]]

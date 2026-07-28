@@ -139,10 +139,16 @@ const rot = document.getElementById("rotator");
 function setWord(w){
   const frag = document.createDocumentFragment();
   for(const ch of w){
-    const s = document.createElement("span");
-    s.className = "rl";
-    s.textContent = ch === " " ? " " : ch;
-    frag.appendChild(s);
+    /* .rl recibe el transform de anime.js; .rl-g lleva el degradado.
+       Separarlos evita el artefacto de pintado de Chrome al animar un
+       elemento que ademas usa background-clip:text (ver styles.css). */
+    const wrap = document.createElement("span");
+    wrap.className = "rl";
+    const glyph = document.createElement("span");
+    glyph.className = "rl-g";
+    glyph.textContent = ch === " " ? " " : ch;
+    wrap.appendChild(glyph);
+    frag.appendChild(wrap);
   }
   rot.replaceChildren(frag);
   return [...rot.children];
