@@ -155,15 +155,6 @@ body.has-hero-video .hero::before{opacity:.35}
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
 }
 
-/* ---------- PRELOADER ---------- */
-#loader{
-  position:fixed;inset:0;background:var(--void);z-index:100;
-  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:22px;
-}
-#loader .display{font-size:2.2rem}
-.loader-bar{width:200px;height:2px;background:rgba(139,92,246,0.2);overflow:hidden}
-.loader-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--violet),var(--neon))}
-
 /* ---------- CURSOR GLOW ---------- */
 #glow{
   position:fixed;width:560px;height:560px;border-radius:50%;
@@ -316,7 +307,9 @@ nav{
   font-family:inherit;color:inherit;
   transition:transform .3s ease;
 }
-.stile:hover{transform:translateY(-6px)}
+@media(hover:hover) and (pointer:fine){
+  .stile:hover{transform:translateY(-6px)}
+}
 .stile-top{
   background:linear-gradient(120deg,#5B2EBF,#8B5CF6);
   padding:12px 14px;display:flex;align-items:center;gap:9px;flex-shrink:0;
@@ -361,11 +354,15 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
   background:radial-gradient(600px circle at var(--mx,50%) var(--my,50%),rgba(43,240,228,0.12),transparent 45%);
   opacity:0;transition:opacity .3s ease;pointer-events:none;z-index:1;
 }
-.service:hover{
-  transform:translateY(-8px);
-  box-shadow:0 24px 60px rgba(0,0,0,0.5),inset 0 1px 1px rgba(255,255,255,0.16);
+/* Protegido: en táctil, tocar dispara un hover falso y la tarjeta se
+   quedaba levantada hasta tocar otra cosa */
+@media(hover:hover) and (pointer:fine){
+  .service:hover{
+    transform:translateY(-8px);
+    box-shadow:0 24px 60px rgba(0,0,0,0.5),inset 0 1px 1px rgba(255,255,255,0.16);
+  }
+  .service:hover::after{opacity:1}
 }
-.service:hover::after{opacity:1}
 .service .tag{color:var(--neon);display:block;margin-bottom:22px}
 .service .icon{
   width:54px;height:54px;border-radius:14px;
@@ -388,9 +385,11 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
   border-radius:22px;
   padding:36px 30px;transition:transform .35s ease,box-shadow .35s ease;
 }
-.biz:hover{
-  transform:translateY(-8px);
-  box-shadow:0 24px 60px rgba(0,0,0,0.5),inset 0 1px 1px rgba(255,61,219,0.3);
+@media(hover:hover) and (pointer:fine){
+  .biz:hover{
+    transform:translateY(-8px);
+    box-shadow:0 24px 60px rgba(0,0,0,0.5),inset 0 1px 1px rgba(255,61,219,0.3);
+  }
 }
 .biz .biz-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
 .biz .biz-icon{font-size:1.9rem}
@@ -430,7 +429,8 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
 .progress-line{position:absolute;top:40px;left:0;height:1px;width:100%;background:var(--line);display:none}
 @media(min-width:920px){.progress-line{display:block}}
 .progress-fill{
-  height:100%;width:0%;
+  height:100%;width:100%;
+  transform-origin:left center;transform:scaleX(0);
   background:linear-gradient(90deg,var(--violet),var(--neon));
   box-shadow:0 0 14px rgba(43,240,228,0.8);
 }
@@ -647,7 +647,13 @@ footer p{font-size:0.95rem;line-height:1.6}
 .chip.on{background:#5B2EBF;border-color:#5B2EBF;color:#fff}
 .chip:disabled{opacity:.35;cursor:default;text-decoration:line-through}
 .credit-bar{background:#E6E3F5;border-radius:100px;height:10px;overflow:hidden;margin:8px 0 4px}
-.credit-fill{height:100%;background:linear-gradient(90deg,#22B573,#5B2EBF);border-radius:100px;transition:width .3s ease}
+/* scaleX en vez de width: `width` dispara layout, paint y composite en
+   cada fotograma; `transform` va por GPU. El JS pasa un factor 0-1. */
+.credit-fill{
+  height:100%;width:100%;background:linear-gradient(90deg,#22B573,#5B2EBF);
+  border-radius:100px;transform-origin:left center;transform:scaleX(0);
+  transition:transform .3s ease;
+}
 .dapp-row{display:flex;justify-content:space-between;font-size:0.91rem;padding:5px 0;color:#4A4670}
 .dapp-row.total{font-weight:700;color:#1A1830;font-size:1rem;border-top:1.5px solid #DDD9F0;margin-top:6px;padding-top:10px}
 .approve-btns{display:flex;gap:10px;margin-top:10px}
@@ -720,9 +726,19 @@ textarea.dapp-input{resize:none;min-height:64px}
 }
 
 a:focus-visible,.btn:focus-visible{outline:3px solid var(--neon);outline-offset:3px}
+/* Reduced-motion significa menos movimiento, no cero: se conservan las
+   transiciones de color y opacidad (ayudan a entender qué cambió) y se
+   quita solo el desplazamiento. */
 @media(prefers-reduced-motion:reduce){
   .giant-inner{animation:none}
   .neon-text{animation:none}
   .skel{animation:none}
-  *{transition:none!important}
+  *{
+    transition-property:opacity,color,background-color,border-color,box-shadow,text-shadow!important;
+    transition-duration:.2s!important;
+  }
+  .service:hover,.biz:hover,.stile:hover{transform:none!important}
+  /* El toast conserva su translateX(-50%): ahi el transform centra, no anima */
+  .dapp-toast,.dapp-toast.show{transform:translateX(-50%)!important}
+  .scroll-hint{display:none}
 }

@@ -483,7 +483,7 @@ distribuidora:{
         <div class="dapp-body">
           <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,20,80,0.06)">
             <div class="dapp-row" style="padding:0"><span><b>Línea de crédito</b></span><span>${money(credito())} de ${money(LIMITE)}</span></div>
-            <div class="credit-bar"><div class="credit-fill" style="width:${Math.min(100,credito()/LIMITE*100)}%"></div></div>
+            <div class="credit-bar"><div class="credit-fill" style="transform:scaleX(${Math.min(1,credito()/LIMITE)})"></div></div>
             <span style="font-size:0.75rem;color:#7A76A0">Disponible: ${money(LIMITE-credito())} · corte el día 30</span>
           </div>
           <div class="dapp-tabs">${["Catálogo","Mis pedidos"].map(t=>
@@ -706,7 +706,7 @@ taller:{
           ${tab==="Avance"?`
             <div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,20,80,0.06)">
               <div class="dapp-row" style="padding:0"><span><b>Avance general</b></span><span><b>70%</b></span></div>
-              <div class="credit-bar"><div class="credit-fill" style="width:70%"></div></div>
+              <div class="credit-bar"><div class="credit-fill" style="transform:scaleX(0.7)"></div></div>
               <span style="font-size:0.75rem;color:#7A76A0">Estimamos terminar hoy a las 5:00 pm</span>
             </div>
             <div class="dapp-timeline">

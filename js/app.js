@@ -101,31 +101,30 @@ function blurTextIn(el, delay){
   if(!words.length) return;
   gsap.set(words,{filter:"blur(10px)",opacity:0,y:50});
   gsap.timeline({delay:delay||0})
-    .to(words,{filter:"blur(5px)",opacity:0.5,y:-5,duration:0.35,ease:"power2.out",stagger:0.1})
-    .to(words,{filter:"blur(0px)",opacity:1,y:0,duration:0.35,ease:"power2.out",stagger:0.1,
+    .to(words,{filter:"blur(5px)",opacity:0.5,y:-5,duration:0.35,ease:"power2.out",stagger:0.06})
+    .to(words,{filter:"blur(0px)",opacity:1,y:0,duration:0.35,ease:"power2.out",stagger:0.06,
       clearProps:"filter,transform"}, 0.35);
 }
 
-/* ---------- PRELOADER ---------- */
-const loader = document.getElementById("loader");
-gsap.to("#loaderFill",{width:"100%",duration:0.9,ease:"power2.inOut",onComplete:()=>{
-  gsap.to(loader,{opacity:0,duration:0.5,onComplete:()=>loader.remove()});
-  heroIntro();
-}});
+/* El hero arranca de inmediato. Antes habia un preloader de 1.4 s, pero el
+   sitio pesa 36 KB comprimidos: ya habia cargado antes de que la barra
+   llegara a la mitad, asi que solo anadia espera a contenido que estaba
+   listo. */
+heroIntro();
 
 function heroIntro(){
   if(reduced) return;
   /* Las dos primeras líneas entran palabra por palabra; la tercera es el
      rotador, que tiene su propia animación letra a letra con anime.js */
   document.querySelectorAll(".hero h1 .line[data-blur]").forEach((line,i)=>
-    blurTextIn(line, i*0.18));
+    blurTextIn(line, i*0.12));
   /* clearProps es importante: sin el, .rotator-box se queda con un
      transform inline que lo promueve a capa propia, y al reemplazar las
      letras dentro quedaba pintada la capa vieja de la primera letra. */
   gsap.from(".hero h1 .line:not([data-blur]) > span",
-    {yPercent:110,duration:0.95,delay:0.5,ease:"power3.out",clearProps:"transform"});
-  gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.15,delay:0.75,ease:"power2.out"});
-  gsap.from(".smarquee",{opacity:0,duration:1,delay:1.1,ease:"power2.out"});
+    {yPercent:110,duration:0.95,delay:0.35,ease:"power3.out",clearProps:"transform"});
+  gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.06,delay:0.5,ease:"power2.out"});
+  gsap.from(".smarquee",{opacity:0,duration:1,delay:0.7,ease:"power2.out"});
   gsap.to(".scroll-hint",{y:10,repeat:-1,yoyo:true,duration:0.8,ease:"sine.inOut"});
 }
 
@@ -167,7 +166,7 @@ if(!reduced){
     const salen = [...rot.children];
     anime.remove(salen);
     anime({targets:salen,translateY:[0,-18],opacity:[1,0],
-      delay:anime.stagger(14),duration:280,easing:"easeInCubic",
+      delay:anime.stagger(14),duration:280,easing:"easeOutCubic",
       complete:()=>{
         wi = (wi+1) % words.length;
         const entran = setWord(words[wi]);
@@ -190,7 +189,9 @@ function drawCircuit(){
     transformOrigin:"center",delay:anime.stagger(120,{start:600}),
     duration:600,easing:"easeOutElastic(1,.5)"});
 }
-setTimeout(drawCircuit,1500);
+/* 1500 ms estaba calibrado para esperar al preloader; sin el, el circuito
+   entra junto con el resto del hero */
+setTimeout(drawCircuit,400);
 
 /* ---------- LOGO: letras que saltan al pasar el cursor (anime.js) ---------- */
 document.querySelectorAll("nav .logo").forEach(logo=>{
@@ -453,7 +454,7 @@ if(!reduced){
   /* Línea de progreso del proceso */
   ScrollTrigger.create({
     trigger:"#proceso",start:"top 70%",once:true,
-    onEnter:()=>gsap.fromTo("#progressFill",{width:"0%"},{width:"100%",duration:1.6,ease:"power2.inOut"})
+    onEnter:()=>gsap.fromTo("#progressFill",{scaleX:0},{scaleX:1,duration:1.6,ease:"power2.inOut"})
   });
   /* Footer gigante */
   gsap.from(".footer-giant .word",{opacity:0,y:60,duration:1,ease:"power3.out",
