@@ -400,7 +400,7 @@ function buildTile(t){
 
 /* ==================== SCROLLSPY: resalta la sección activa en el nav ==================== */
 const spyLinks = [...document.querySelectorAll('#navLinks a[href^="#"]:not(.nav-cta)')];
-const spySections = ["servicios","ideas","proceso","problemas","faq","contacto"]
+const spySections = ["servicios","ideas","proceso","problemas","nosotros","faq","contacto"]
   .map(id=>({id, el:document.getElementById(id)}))
   .filter(s=>s.el);
 function updateSpy(){
