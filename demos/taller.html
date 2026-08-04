@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Taller Rodríguez — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para un taller mecánico. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+let ordenes = [
+  {folio:"A-1042",cliente:"Sr. Méndez",tel:"953 118 9931",auto:"Nissan Versa 2019",placas:"MHZ-42-18",
+   entrada:"lunes 10:30",avance:70,mec:"Chuy",estado:"reparacion",
+   base:[["Cambio de balatas delanteras",1250],["Rectificado de discos",600],["Mano de obra",850]],
+   extra:{n:"Cambio de bujías",p:480,estado:"pendiente",hora:""}},
+  {folio:"A-1041",cliente:"Sra. Beatriz",tel:"953 102 4417",auto:"Chevrolet Aveo 2016",placas:"NKT-11-05",
+   entrada:"lunes 08:15",avance:100,mec:"Lalo",estado:"listo",
+   base:[["Afinación mayor",1850],["Filtro de aire",320]],
+   extra:{n:"Cambio de anticongelante",p:390,estado:"aprobado",hora:"11:20"}},
+  {folio:"A-1040",cliente:"Ing. Toledo",tel:"953 145 7788",auto:"VW Jetta 2021",placas:"PDR-88-42",
+   entrada:"martes 09:00",avance:25,mec:"Chuy",estado:"diagnostico",
+   base:[["Diagnóstico electrónico",450]],
+   extra:{n:"Sensor de oxígeno",p:1180,estado:"pendiente",hora:""}},
+];
+let citas = [
+  {hora:"09:00",cliente:"Familia Ruiz",auto:"Honda CR-V 2020",serv:"Servicio 20 mil km",estado:"confirmada"},
+  {hora:"11:30",cliente:"Sr. Palacios",auto:"Mazda 3 2018",serv:"Revisión de frenos",estado:"confirmada"},
+  {hora:"14:00",cliente:"Lic. Ortega",auto:"Toyota Hilux 2022",serv:"Cambio de aceite",estado:"pendiente"},
+  {hora:"16:30",cliente:"Sra. Nieto",auto:"Kia Rio 2017",serv:"Diagnóstico de clima",estado:"pendiente"},
+];
+const totalOrden = o => o.base.reduce((s,[,p])=>s+p,0) + (o.extra.estado==="aprobado"?o.extra.p:0);
+const porAprobar = () => ordenes.filter(o=>o.extra.estado==="pendiente");
+const enTaller = () => ordenes.filter(o=>o.estado!=="entregado");
+const ESTADOS = {diagnostico:["Diagnóstico","warn"],reparacion:["En reparación","info"],listo:["Listo para entrega","ok"],entregado:["Entregado","neutral"]};
+
+startDemo({
+  negocio:"Taller Rodríguez", rubro:"Servicio automotriz · Oaxaca", emoji:"🔧",
+  secciones:[
+    {
+      id:"ordenes", nombre:"Órdenes", ic:"🔧",
+      titulo:"Vehículos en taller", sub:"Cada cliente ve el avance de su auto desde su celular",
+      badge:()=>enTaller().length,
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">En taller</div><div class="val">${enTaller().length}</div><div class="delta flat">${money(enTaller().reduce((s,o)=>s+totalOrden(o),0))} facturable</div></div>
+            <div class="kpi"><div class="lbl">Listos para entrega</div><div class="val">${ordenes.filter(o=>o.estado==="listo").length}</div><div class="delta up">avisar al cliente</div></div>
+            <div class="kpi"><div class="lbl">Presupuestos pendientes</div><div class="val">${porAprobar().length}</div><div class="delta ${porAprobar().length?"down":"up"}">${porAprobar().length?"esperando al cliente":"al corriente"}</div></div>
+            <div class="kpi"><div class="lbl">Ingresos del mes</div><div class="val">$68,400</div><div class="delta up">▲ 14%</div></div>
+          </div>
+          ${ordenes.map(o=>`
+            <div class="panel">
+              <div class="panel-h">
+                <h2>${esc(o.folio)} · ${esc(o.auto)}</h2>
+                <span class="sub">${esc(o.cliente)} · ${esc(o.placas)} · entró ${esc(o.entrada)} · mecánico ${esc(o.mec)}</span>
+                <div class="right">
+                  <span class="tag ${ESTADOS[o.estado][1]}">${ESTADOS[o.estado][0]}</span>
+                  <b>${money(totalOrden(o))}</b>
+                  ${o.estado==="listo"?`<button class="btn sm primary" data-avisar="${esc(o.folio)}">Avisar al cliente</button>`:""}
+                </div>
+              </div>
+              <div class="panel-b">
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+                  <div style="flex:1">${bar(o.avance/100)}</div>
+                  <b style="white-space:nowrap">${o.avance}%</b>
+                </div>
+                <table class="tbl" style="font-size:.9rem">
+                  <tbody>
+                    ${o.base.map(([n,p])=>`<tr><td>${esc(n)}</td><td class="num">${money(p)}</td></tr>`).join("")}
+                    ${o.extra.estado==="aprobado"?`<tr><td style="color:var(--ok)">${esc(o.extra.n)} ✓ <span style="color:var(--ink-3);font-size:.82rem">aprobado ${esc(o.extra.hora)}</span></td><td class="num" style="color:var(--ok)">${money(o.extra.p)}</td></tr>`:""}
+                    <tr><td class="strong">Total</td><td class="num strong">${money(totalOrden(o))}</td></tr>
+                  </tbody>
+                </table>
+                ${o.extra.estado==="pendiente"?`
+                  <div class="note warn" style="margin-top:14px"><span class="ic">🔍</span><div style="flex:1">
+                    <b>El mecánico encontró algo más</b>
+                    <span>${esc(o.extra.n)} · ${money(o.extra.p)}. Se le envió al cliente para que autorice.</span>
+                    <div style="display:flex;gap:8px;margin-top:9px">
+                      <button class="btn sm primary" data-apr="${esc(o.folio)}">Cliente aprobó</button>
+                      <button class="btn sm" data-rej="${esc(o.folio)}">Cliente rechazó</button>
+                    </div></div></div>`:""}
+                ${o.extra.estado==="rechazado"?`
+                  <div class="note info" style="margin-top:14px"><span class="ic">👍</span><div>
+                    <b>Sin cargos extra</b><span>Solo se hará el trabajo aprobado originalmente</span></div></div>`:""}
+              </div>
+            </div>`).join("")}`;
+        root.querySelectorAll("[data-apr]").forEach(b=>b.onclick=()=>{
+          const o=ordenes.find(x=>x.folio===b.dataset.apr);
+          o.extra.estado="aprobado";
+          o.extra.hora=new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+          toast("Autorización registrada con fecha y hora · total "+money(totalOrden(o)),"✅");
+          refrescar();
+        });
+        root.querySelectorAll("[data-rej]").forEach(b=>b.onclick=()=>{
+          const o=ordenes.find(x=>x.folio===b.dataset.rej);
+          o.extra.estado="rechazado";
+          toast("Registrado: el cliente no autorizó el trabajo extra","📝");
+          refrescar();
+        });
+        root.querySelectorAll("[data-avisar]").forEach(b=>b.onclick=()=>{
+          const o=ordenes.find(x=>x.folio===b.dataset.avisar);
+          toast("WhatsApp enviado a "+esc(o.cliente)+": su "+esc(o.auto)+" está listo","📲");
+        });
+      }
+    },
+    {
+      id:"agenda", nombre:"Agenda", ic:"📅",
+      titulo:"Citas de hoy", sub:"Los clientes agendan en línea y el sistema confirma solo",
+      badge:()=>citas.filter(c=>c.estado==="pendiente").length||"",
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="note info"><span class="ic">📅</span><div>
+            <b>Agenda en línea</b>
+            <span>Tus clientes eligen día y hora desde el enlace que compartes; el sistema evita empalmes y manda recordatorio la víspera.</span></div></div>
+          <div class="panel">
+            <div class="panel-h"><h2>Hoy</h2><span class="sub">${citas.length} citas · 2 mecánicos disponibles</span></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Hora</th><th>Cliente</th><th>Vehículo</th><th>Servicio</th><th>Estado</th><th></th></tr></thead>
+              <tbody>${citas.map((c,i)=>`
+                <tr>
+                  <td class="strong">${esc(c.hora)}</td>
+                  <td><b>${esc(c.cliente)}</b></td>
+                  <td style="color:var(--ink-3)">${esc(c.auto)}</td>
+                  <td>${esc(c.serv)}</td>
+                  <td><span class="tag ${c.estado==="confirmada"?"ok":"warn"}">${esc(c.estado)}</span></td>
+                  <td class="num">${c.estado==="pendiente"
+                    ? `<button class="btn sm primary" data-conf="${i}">Confirmar</button>`:""}</td>
+                </tr>`).join("")}</tbody>
+            </table></div></div>
+          </div>`;
+        root.querySelectorAll("[data-conf]").forEach(b=>b.onclick=()=>{
+          const c=citas[+b.dataset.conf]; c.estado="confirmada";
+          toast("Cita de "+esc(c.cliente)+" confirmada · recordatorio programado","📲");
+          refrescar();
+        });
+      }
+    },
+    {
+      id:"historial", nombre:"Historial", ic:"📚",
+      titulo:"Historial por vehículo", sub:"Todo lo que se le ha hecho a cada auto, sin buscar en libretas",
+      render(root){
+        root.innerHTML = `
+          <div class="panel">
+            <div class="panel-h"><h2>Nissan Versa 2019 · MHZ-42-18</h2><span class="sub">Sr. Méndez · cliente desde 2023</span></div>
+            <div class="panel-b">
+              <div class="tl">
+                <div class="tl-i now"><div class="tl-d">●</div><div><b>Frenos delanteros — ${money(2700)}</b><span>Hoy · balatas y rectificado de discos</span></div></div>
+                <div class="tl-i done"><div class="tl-d">✓</div><div><b>Afinación menor — ${money(1450)}</b><span>12 mar 2026 · 78,400 km</span></div></div>
+                <div class="tl-i done"><div class="tl-d">✓</div><div><b>Cambio de amortiguadores — ${money(4200)}</b><span>04 nov 2025 · 71,900 km</span></div></div>
+                <div class="tl-i done"><div class="tl-d">✓</div><div><b>Servicio mayor — ${money(2890)}</b><span>18 jun 2025 · 65,100 km</span></div></div>
+              </div>
+              <div class="note ok" style="margin-top:16px"><span class="ic">💡</span><div>
+                <b>Próximo servicio sugerido: 90,000 km</b>
+                <span>Con el promedio de 1,100 km al mes, le tocaría en noviembre. El sistema le avisa solo.</span></div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h2>Evidencia fotográfica</h2><span class="sub">El mecánico sube antes y después desde su celular</span></div>
+            <div class="panel-b">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
+                ${[["🛞","Balata · antes"],["🔩","Disco · antes"],["⚙️","Refacción nueva"],["🛠️","Montaje"],["📸","Prueba de ruta"],["🚗","Entrega"]].map(([e,t])=>`
+                  <div style="background:var(--bg);border-radius:11px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+                    <span style="font-size:1.8rem">${e}</span>
+                    <small style="font-size:.74rem;color:var(--ink-3);text-align:center;padding:0 6px">${t}</small>
+                  </div>`).join("")}
+              </div>
+              <p style="font-size:.86rem;color:var(--ink-3);margin-top:12px">Tu cliente ve la evidencia del trabajo, y tú te proteges de reclamos.</p>
+            </div>
+          </div>`;
+      }
+    }
+  ]
+});
+</script>
+</body>
+</html>

@@ -494,6 +494,9 @@ const money = n => "$" + n.toLocaleString("es-MX",{minimumFractionDigits:2});
 function openDemo(id){
   if(typeof clearDemoTimers==="function") clearDemoTimers();
   demoTitle.textContent = DEMOS[id].title;
+  /* El modal es la probada rápida; el enlace lleva al sistema completo */
+  const full = document.getElementById("demoFull");
+  if(full) full.href = "demos/" + id + ".html";
   frame.innerHTML = "";
   DEMOS[id].render(frame);
   overlay.classList.add("open");

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Boutique Alma — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para una boutique. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+let prendas = [
+  {e:"👗",n:"Vestido floral",p:549,tallas:{CH:1,M:2,G:0},vistas:214,online:true},
+  {e:"🧥",n:"Chamarra de mezclilla",p:729,tallas:{M:3,G:1,XL:1},vistas:186,online:true},
+  {e:"👚",n:"Blusa de lino",p:389,tallas:{CH:1,M:1},vistas:143,online:true},
+  {e:"👜",n:"Bolsa artesanal",p:459,tallas:{"Única":1},vistas:298,online:true},
+  {e:"👠",n:"Zapatilla nude",p:679,tallas:{"23":1,"24":2,"25":0},vistas:97,online:false},
+];
+let apartados = [
+  {folio:"A-217",cliente:"Mariana Cruz",tel:"953 114 5520",prendas:["Vestido floral · M"],total:549,plan:3,pagado:1,vence:"14 ago"},
+  {folio:"A-215",cliente:"Rocío Jiménez",tel:"953 127 8841",prendas:["Chamarra de mezclilla · G","Blusa de lino · CH"],total:1118,plan:2,pagado:1,vence:"09 ago"},
+  {folio:"A-212",cliente:"Fer Ramos",tel:"953 133 0092",prendas:["Bolsa artesanal · Única"],total:459,plan:1,pagado:1,vence:"—"},
+];
+const stock = p => Object.values(p.tallas).reduce((a,b)=>a+b,0);
+const agotadas = () => prendas.filter(p=>stock(p)===0);
+const ultimas = () => prendas.filter(p=>stock(p)===1);
+const cuota = a => Math.ceil(a.total/a.plan);
+const pendientes = () => apartados.filter(a=>a.pagado < a.plan);
+
+startDemo({
+  negocio:"Boutique Alma", rubro:"Ropa y accesorios · Oaxaca", emoji:"👗",
+  secciones:[
+    {
+      id:"panel", nombre:"Panel", ic:"📊",
+      titulo:"Tu tienda hoy", sub:"Local y tienda en línea compartiendo el mismo inventario",
+      render(root){
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Ventas del mes</div><div class="val">$34,180</div><div class="delta up">▲ 22% vs. mes pasado</div></div>
+            <div class="kpi"><div class="lbl">Apartados activos</div><div class="val">${pendientes().length}</div><div class="delta flat">${money(pendientes().reduce((s,a)=>s+a.total,0))} comprometido</div></div>
+            <div class="kpi"><div class="lbl">Visitas al catálogo</div><div class="val">${miles(prendas.reduce((s,p)=>s+p.vistas,0))}</div><div class="delta up">▲ 31% esta semana</div></div>
+            <div class="kpi"><div class="lbl">Prendas en piso</div><div class="val">${prendas.reduce((s,p)=>s+stock(p),0)}</div><div class="delta ${ultimas().length?"down":"flat"}">${ultimas().length} en última pieza</div></div>
+          </div>
+          ${ultimas().length?`<div class="note warn"><span class="ic">👗</span><div>
+            <b>${ultimas().length} prenda(s) en última pieza</b>
+            <span>${ultimas().map(p=>p.n).join(", ")} — considera reabastecer antes del fin de semana</span></div></div>`:""}
+          <div class="cols">
+            <div class="panel">
+              <div class="panel-h"><h2>Lo más visto en el catálogo</h2><span class="sub">El enlace que compartes por WhatsApp</span></div>
+              <div class="panel-b flush"><table class="tbl"><tbody>
+                ${[...prendas].sort((a,b)=>b.vistas-a.vistas).slice(0,4).map(p=>`
+                  <tr>
+                    <td><div class="cellmain"><div class="em">${p.e}</div>
+                      <div><b>${esc(p.n)}</b><span>${p.vistas} visitas · ${stock(p)} en existencia</span></div></div></td>
+                    <td class="num strong">${money(p.p)}</td>
+                  </tr>`).join("")}
+              </tbody></table></div>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><h2>Cobranza de apartados</h2></div>
+              <div class="panel-b">
+                ${pendientes().length?pendientes().map(a=>`
+                  <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+                    <div style="display:flex;justify-content:space-between;gap:10px">
+                      <b>${esc(a.cliente)}</b><span style="color:var(--ink-3);font-size:.85rem">vence ${esc(a.vence)}</span></div>
+                    <div style="margin:7px 0 4px">${bar(a.pagado/a.plan)}</div>
+                    <span style="font-size:.82rem;color:var(--ink-3)">${a.pagado} de ${a.plan} pagos · ${money(cuota(a))} c/u</span>
+                  </div>`).join(""):`<div class="empty"><b>Sin pagos pendientes</b></div>`}
+              </div>
+            </div>
+          </div>`;
+      }
+    },
+    {
+      id:"catalogo", nombre:"Catálogo", ic:"🛍️",
+      titulo:"Catálogo e inventario", sub:"Apagar una prenda la quita de la tienda en línea al instante",
+      badge:()=>agotadas().length||"",
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="panel">
+            <div class="panel-h"><h2>Prendas</h2><span class="sub">Existencia por talla, compartida entre local y web</span></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Prenda</th><th class="num">Precio</th><th>Existencia por talla</th><th class="num">Visitas</th><th>En línea</th></tr></thead>
+              <tbody>${prendas.map((p,i)=>`
+                <tr>
+                  <td><div class="cellmain"><div class="em">${p.e}</div>
+                    <div><b>${esc(p.n)}</b><span>${stock(p)} en total</span></div></div></td>
+                  <td class="num strong">${money(p.p)}</td>
+                  <td>${Object.entries(p.tallas).map(([t,q])=>
+                    `<span class="tag ${q===0?"bad":q===1?"warn":"ok"}" style="margin-right:5px">${t}: ${q}</span>`).join("")}</td>
+                  <td class="num" style="color:var(--ink-3)">${p.vistas}</td>
+                  <td><button class="btn sm ${p.online?"":"primary"}" data-on="${i}">${p.online?"Visible ✓":"Oculta"}</button></td>
+                </tr>`).join("")}</tbody>
+            </table></div></div>
+          </div>`;
+        root.querySelectorAll("[data-on]").forEach(b=>b.onclick=()=>{
+          const p=prendas[+b.dataset.on]; p.online=!p.online;
+          toast(p.online?esc(p.n)+" visible en la tienda en línea":esc(p.n)+" oculta del catálogo", p.online?"👁️":"🚫");
+          refrescar();
+        });
+      }
+    },
+    {
+      id:"apartados", nombre:"Apartados", ic:"🏷️",
+      titulo:"Apartados y pagos a plazos", sub:"Con recordatorio automático por WhatsApp antes de cada quincena",
+      badge:()=>pendientes().length||"",
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="panel">
+            <div class="panel-h"><h2>Apartados</h2></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Folio</th><th>Cliente</th><th>Prendas</th><th style="width:170px">Avance</th><th class="num">Total</th><th></th></tr></thead>
+              <tbody>${apartados.map((a,i)=>`
+                <tr>
+                  <td class="strong">${esc(a.folio)}</td>
+                  <td><b>${esc(a.cliente)}</b><br><span style="color:var(--ink-3);font-size:.82rem">📞 ${esc(a.tel)}</span></td>
+                  <td style="font-size:.88rem">${a.prendas.map(esc).join("<br>")}</td>
+                  <td>${bar(a.pagado/a.plan)}
+                    <span style="font-size:.8rem;color:var(--ink-3)">${a.pagado}/${a.plan} pagos de ${money(cuota(a))}</span></td>
+                  <td class="num strong">${money(a.total)}</td>
+                  <td class="num" style="white-space:nowrap">${a.pagado<a.plan
+                    ? `<button class="btn sm primary" data-pago="${i}">Registrar pago</button>
+                       <button class="btn sm" data-rec="${i}">Recordar</button>`
+                    : `<span class="tag ok">Liquidado</span>`}</td>
+                </tr>`).join("")}</tbody>
+            </table></div></div>
+          </div>`;
+        root.querySelectorAll("[data-pago]").forEach(b=>b.onclick=()=>{
+          const a=apartados[+b.dataset.pago]; a.pagado++;
+          toast(a.pagado===a.plan
+            ? esc(a.folio)+" liquidado · prendas listas para entregar"
+            : "Pago "+a.pagado+" de "+a.plan+" registrado para "+esc(a.cliente), a.pagado===a.plan?"🎉":"💵");
+          refrescar();
+        });
+        root.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{
+          const a=apartados[+b.dataset.rec];
+          toast("Recordatorio enviado a "+esc(a.cliente)+" al "+esc(a.tel),"📲");
+        });
+      }
+    }
+  ]
+});
+</script>
+</body>
+</html>

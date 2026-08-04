@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Farmacia San Miguel — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para una farmacia. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+let lotes = [
+  {n:"Amoxicilina 500 mg",lote:"L-4471",cad:"12 días",dias:12,pz:24,anaquel:"B3",atendido:false},
+  {n:"Jarabe infantil ambroxol",lote:"L-2231",cad:"20 días",dias:20,pz:9,anaquel:"A1",atendido:false},
+  {n:"Naproxeno 250 mg",lote:"L-8890",cad:"34 días",dias:34,pz:16,anaquel:"C2",atendido:false},
+  {n:"Loratadina 10 mg",lote:"L-1102",cad:"58 días",dias:58,pz:40,anaquel:"B1",atendido:false},
+];
+let stock = [
+  {n:"Paracetamol 500 mg c/10",hay:6,  dia:4,  p:12.5},
+  {n:"Suero oral 625 ml",      hay:3,  dia:2,  p:18},
+  {n:"Ibuprofeno 400 mg c/10", hay:19, dia:3,  p:15.8},
+  {n:"Vitamina C 1 g c/10",    hay:5,  dia:3,  p:22},
+  {n:"Alcohol 250 ml",         hay:31, dia:2,  p:26},
+];
+let clientes = [
+  {n:"Jorge Ramírez",tel:"953 118 2201",trat:"Metformina 850 mg",cada:30,ultimo:30,avisado:false},
+  {n:"Carmen López",tel:"953 105 7742",trat:"Losartán 50 mg",cada:30,ultimo:28,avisado:false},
+  {n:"Familia Torres",tel:"953 132 0186",trat:"Vitaminas infantiles",cada:21,ultimo:21,avisado:false},
+  {n:"Paola Rueda",tel:"953 121 8830",trat:"Omeprazol 20 mg",cada:30,ultimo:14,avisado:false},
+];
+let proveedor = "Droguería Nacional";
+const porVencer = () => lotes.filter(l=>!l.atendido && l.dias<=30);
+const bajos = () => stock.filter(s=>s.hay < s.dia*5);
+const sugerido = s => Math.max(0, Math.ceil(s.dia*10) - s.hay);
+const totalPedido = () => bajos().reduce((t,s)=>t+sugerido(s)*s.p,0);
+const tocan = () => clientes.filter(c=>!c.avisado && c.ultimo>=c.cada-2);
+const iniciales = n => n.split(" ").map(w=>w[0]).slice(0,2).join("");
+
+startDemo({
+  negocio:"Farmacia San Miguel", rubro:"Farmacia · Oaxaca", emoji:"💊",
+  secciones:[
+    {
+      id:"panel", nombre:"Panel", ic:"📊",
+      titulo:"Resumen del día", sub:"Lo que necesitas saber al abrir la cortina",
+      render(root){
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Ventas hoy</div><div class="val">$8,430</div><div class="delta up">▲ 12% vs. ayer</div></div>
+            <div class="kpi"><div class="lbl">Tickets</div><div class="val">46</div><div class="delta up">▲ 5</div></div>
+            <div class="kpi"><div class="lbl">Lotes por vencer</div><div class="val">${porVencer().length}</div><div class="delta ${porVencer().length?"down":"up"}">${porVencer().length?"requieren acción":"al corriente"}</div></div>
+            <div class="kpi"><div class="lbl">Productos bajos</div><div class="val">${bajos().length}</div><div class="delta flat">de ${stock.length} vigilados</div></div>
+          </div>
+          ${porVencer().length?`<div class="note bad"><span class="ic">⏰</span><div>
+            <b>${porVencer().length} lotes caducan en menos de 30 días</b>
+            <span>Vale ${money(porVencer().reduce((t,l)=>t+l.pz*35,0))} en producto. Ve a Caducidades para liquidarlo o devolverlo.</span></div></div>`:""}
+          <div class="cols">
+            <div class="panel">
+              <div class="panel-h"><h2>Ventas por día</h2><span class="sub">Últimos 7 días</span></div>
+              <div class="panel-b">${chart([
+                {k:"Lun",v:6100},{k:"Mar",v:5800},{k:"Mié",v:7200},{k:"Jue",v:6900},
+                {k:"Vie",v:9100,hi:true},{k:"Sáb",v:8700},{k:"Dom",v:4300}])}</div>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><h2>Clientes por surtir</h2><span class="sub">${tocan().length} esta semana</span></div>
+              <div class="panel-b flush"><table class="tbl"><tbody>
+                ${tocan().length?tocan().map(c=>`<tr>
+                  <td><div class="cellmain"><div class="em">${iniciales(c.n)}</div>
+                    <div><b>${esc(c.n)}</b><span>${esc(c.trat)} · hace ${c.ultimo} días</span></div></div></td>
+                </tr>`).join(""):`<tr><td><div class="empty"><b>Nadie pendiente</b><p>Todos avisados.</p></div></td></tr>`}
+              </tbody></table></div>
+            </div>
+          </div>`;
+      }
+    },
+    {
+      id:"caducidades", nombre:"Caducidades", ic:"⏰",
+      titulo:"Control de caducidades", sub:"El sistema revisa cada lote todos los días para que no pierdas producto",
+      badge:()=>porVencer().length||"",
+      render(root, refrescar){
+        const pend = lotes.filter(l=>!l.atendido);
+        root.innerHTML = `
+          <div class="panel">
+            <div class="panel-h"><h2>Lotes vigilados</h2><span class="sub">Ordenados por urgencia</span></div>
+            <div class="panel-b flush">${pend.length?`<div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Medicamento</th><th>Lote</th><th>Anaquel</th><th class="num">Piezas</th><th>Caduca en</th><th></th></tr></thead>
+              <tbody>${pend.map((l,i)=>`
+                <tr>
+                  <td><b>${esc(l.n)}</b></td>
+                  <td style="color:var(--ink-3)">${esc(l.lote)}</td>
+                  <td><span class="tag neutral">${esc(l.anaquel)}</span></td>
+                  <td class="num strong">${l.pz}</td>
+                  <td><span class="tag ${l.dias<=15?"bad":l.dias<=30?"warn":"ok"}">${esc(l.cad)}</span></td>
+                  <td class="num" style="white-space:nowrap">
+                    <button class="btn sm" data-liq="${lotes.indexOf(l)}">Liquidar</button>
+                    <button class="btn sm" data-dev="${lotes.indexOf(l)}">Devolver</button></td>
+                </tr>`).join("")}</tbody></table></div>`
+              :`<div class="empty"><div class="big">🌟</div><b>Todo atendido</b>
+                <p>Ningún lote pendiente. El sistema seguirá revisando cada día por ti.</p></div>`}
+            </div>
+          </div>`;
+        root.querySelectorAll("[data-liq]").forEach(b=>b.onclick=()=>{
+          const l=lotes[+b.dataset.liq]; l.atendido=true;
+          toast(esc(l.n)+" marcado con 30% de descuento en el punto de venta","🏷️"); refrescar(); });
+        root.querySelectorAll("[data-dev]").forEach(b=>b.onclick=()=>{
+          const l=lotes[+b.dataset.dev]; l.atendido=true;
+          toast("Devolución de "+esc(l.n)+" solicitada a la droguería","📦"); refrescar(); });
+      }
+    },
+    {
+      id:"pedido", nombre:"Pedido", ic:"🚚",
+      titulo:"Pedido a droguería", sub:"Calculado con la rotación real de los últimos 30 días",
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="note info"><span class="ic">🤖</span><div>
+            <b>Sugerencia automática</b>
+            <span>Se pide lo necesario para 10 días de venta según lo que realmente se mueve. Puedes ajustar cualquier cantidad.</span></div></div>
+          <div class="panel">
+            <div class="panel-h"><h2>Proveedor</h2>
+              <div class="right">${["Droguería Nacional","Farmapronto"].map(p=>
+                `<button class="btn sm ${p===proveedor?"primary":""}" data-prov="${esc(p)}">${esc(p)}</button>`).join("")}</div></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Producto</th><th class="num">Hay</th><th class="num">Venta diaria</th><th class="num">Sugerido</th><th class="num">Importe</th></tr></thead>
+              <tbody>${bajos().length?bajos().map(s=>`
+                <tr>
+                  <td><b>${esc(s.n)}</b></td>
+                  <td class="num"><span class="tag ${s.hay<s.dia*3?"bad":"warn"}">${s.hay}</span></td>
+                  <td class="num" style="color:var(--ink-3)">${s.dia} pz</td>
+                  <td class="num strong">${sugerido(s)}</td>
+                  <td class="num">${money(sugerido(s)*s.p)}</td>
+                </tr>`).join(""):`<tr><td colspan="5"><div class="empty"><div class="big">👌</div>
+                  <b>Nada por pedir</b><p>Todo el inventario vigilado está por encima del mínimo.</p></div></td></tr>`}</tbody>
+              ${bajos().length?`<tfoot><tr><td colspan="4" class="num strong">Total del pedido</td>
+                <td class="num strong">${money(totalPedido())}</td></tr></tfoot>`:""}
+            </table></div></div>
+          </div>
+          ${bajos().length?`<button class="btn primary" id="enviarPedido">Enviar pedido a ${esc(proveedor)}</button>`:""}`;
+        root.querySelectorAll("[data-prov]").forEach(b=>b.onclick=()=>{ proveedor=b.dataset.prov; refrescar(); });
+        const e = document.getElementById("enviarPedido");
+        if(e) e.onclick=()=>{
+          const folio = "PED-"+Math.floor(4400+Math.random()*100);
+          const eta = proveedor==="Droguería Nacional" ? "mañana antes de las 9:00" : "hoy antes de las 18:00";
+          bajos().forEach(s=>{ s.hay += sugerido(s); });
+          toast(folio+" enviado · entrega "+eta,"🚚");
+          refrescar();
+        };
+      }
+    },
+    {
+      id:"clientes", nombre:"Clientes", ic:"👥",
+      titulo:"Clientes frecuentes", sub:"Quién surte qué y cada cuánto, para recordarles a tiempo",
+      badge:()=>tocan().length||"",
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="panel">
+            <div class="panel-h"><h2>Tratamientos en seguimiento</h2>
+              <div class="right"><input class="field search" id="q" placeholder="🔍 Buscar cliente…"></div></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Cliente</th><th>Tratamiento</th><th>Frecuencia</th><th>Último surtido</th><th></th></tr></thead>
+              <tbody id="filas"></tbody></table></div></div>
+          </div>`;
+        const filas = () => {
+          const q=(document.getElementById("q").value||"").toLowerCase();
+          const lista = clientes.filter(c=>c.n.toLowerCase().includes(q));
+          document.getElementById("filas").innerHTML = lista.length?lista.map(c=>{
+            const toca = c.ultimo>=c.cada-2;
+            return `<tr>
+              <td><div class="cellmain"><div class="em">${iniciales(c.n)}</div>
+                <div><b>${esc(c.n)}</b><span>📞 ${esc(c.tel)}</span></div></div></td>
+              <td>${esc(c.trat)}</td>
+              <td style="color:var(--ink-3)">cada ${c.cada} días</td>
+              <td>${toca?`<span class="tag warn">hace ${c.ultimo} días</span>`:`<span style="color:var(--ink-3)">hace ${c.ultimo} días</span>`}</td>
+              <td class="num">${c.avisado?`<span class="tag ok">Recordado ✓</span>`
+                :toca?`<button class="btn sm primary" data-rec="${clientes.indexOf(c)}">Recordar por WhatsApp</button>`:""}</td>
+            </tr>`;}).join(""):`<tr><td colspan="5"><div class="empty"><b>Sin resultados</b></div></td></tr>`;
+          document.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{
+            const c=clientes[+b.dataset.rec]; c.avisado=true;
+            toast("Recordatorio enviado a "+esc(c.n),"📲"); refrescar(); });
+        };
+        filas();
+        document.getElementById("q").oninput = filas;
+      }
+    }
+  ]
+});
+</script>
+</body>
+</html>

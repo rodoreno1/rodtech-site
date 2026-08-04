@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>La Cocina de Rosa — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para un restaurante. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+/* ---------------- Datos ---------------- */
+let comandas = [
+  {id:48, mesa:"Mesa 4", mozo:"Lupita", hora:"14:12", estado:"cocina", min:6, items:[["Tacos de pastor",2,95],["Agua del día 1L",1,45]], nota:"Sin cebolla"},
+  {id:47, mesa:"Mesa 9", mozo:"Beto",   hora:"14:05", estado:"cocina", min:13, items:[["Enchiladas verdes",3,110],["Refresco",3,30]], nota:""},
+  {id:46, mesa:"Barra 2", mozo:"Lupita", hora:"13:58", estado:"listo", min:20, items:[["Hamburguesa de la casa",1,145],["Limonada mineral",1,42]], nota:"Término tres cuartos"},
+  {id:45, mesa:"Mesa 1", mozo:"Sofi",   hora:"13:40", estado:"servido", min:38, items:[["Mole de la abuela",2,125],["Café de olla",2,38]], nota:""},
+];
+let menu = [
+  {e:"🌮",n:"Tacos de pastor (orden)",cat:"Platillos",p:95, vendidos:34, activo:true},
+  {e:"🥘",n:"Enchiladas verdes",cat:"Platillos",p:110, vendidos:21, activo:true},
+  {e:"🍔",n:"Hamburguesa de la casa",cat:"Platillos",p:145, vendidos:18, activo:true},
+  {e:"🍗",n:"Mole de la abuela",cat:"Platillos",p:125, vendidos:12, activo:false},
+  {e:"🥗",n:"Ensalada César",cat:"Platillos",p:98, vendidos:9, activo:true},
+  {e:"🍹",n:"Agua del día 1L",cat:"Bebidas",p:45, vendidos:41, activo:true},
+  {e:"☕",n:"Café de olla",cat:"Bebidas",p:38, vendidos:27, activo:true},
+  {e:"🍮",n:"Flan napolitano",cat:"Postres",p:55, vendidos:15, activo:true},
+];
+let insumos = [
+  {n:"Carne al pastor",u:"kg", hay:8,  min:12, prov:"Carnes del Valle"},
+  {n:"Tortilla de maíz",u:"kg", hay:22, min:15, prov:"Tortillería Aurora"},
+  {n:"Queso fresco",u:"kg", hay:3,  min:6,  prov:"Lácteos San José"},
+  {n:"Aguacate",u:"kg", hay:14, min:10, prov:"Central de Abastos"},
+  {n:"Piña",u:"pza", hay:4,  min:8,  prov:"Central de Abastos"},
+];
+const totalCom = c => c.items.reduce((s,[,q,p])=>s+q*p,0);
+const bajos = () => insumos.filter(i=>i.hay < i.min);
+const abiertas = () => comandas.filter(c=>c.estado!=="servido");
+
+/* ---------------- Demo ---------------- */
+startDemo({
+  negocio:"La Cocina de Rosa", rubro:"Restaurante · Oaxaca", emoji:"🍽️",
+  secciones:[
+    /* ---------- Comandas ---------- */
+    {
+      id:"comandas", nombre:"Comandas", ic:"🔔",
+      titulo:"Comandas en curso", sub:"Lo que la cocina está viendo ahora mismo",
+      badge:()=>abiertas().length,
+      render(root, refrescar){
+        const ventas = comandas.reduce((s,c)=>s+totalCom(c),0);
+        const ticket = Math.round(ventas / comandas.length);
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Ventas del turno</div><div class="val">${money(ventas)}</div><div class="delta up">▲ 12% vs. ayer</div></div>
+            <div class="kpi"><div class="lbl">Comandas abiertas</div><div class="val">${abiertas().length}</div><div class="delta flat">de ${comandas.length} del turno</div></div>
+            <div class="kpi"><div class="lbl">Ticket promedio</div><div class="val">${money(ticket)}</div><div class="delta up">▲ $18 vs. ayer</div></div>
+            <div class="kpi"><div class="lbl">Tiempo promedio</div><div class="val">17 min</div><div class="delta up">▼ 4 min esta semana</div></div>
+          </div>
+          ${bajos().length ? `<div class="note warn"><span class="ic">📦</span><div>
+            <b>${bajos().length} insumos por debajo del mínimo</b>
+            <span>${bajos().map(i=>i.n).join(", ")} — revisa la sección de Insumos</span></div></div>` : ""}
+          <div class="panel">
+            <div class="panel-h"><h2>Órdenes del turno</h2>
+              <span class="sub">Se actualiza sola conforme la cocina avanza</span></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Comanda</th><th>Platillos</th><th>Estado</th><th class="num">Total</th><th></th></tr></thead>
+              <tbody>${comandas.map(c=>`
+                <tr>
+                  <td><div class="cellmain"><div class="em">#${c.id}</div>
+                    <div><b>${esc(c.mesa)}</b><span>${esc(c.mozo)} · ${c.hora} · hace ${c.min} min</span></div></div></td>
+                  <td>${c.items.map(([n,q])=>`${q}× ${esc(n)}`).join("<br>")}
+                    ${c.nota?`<br><span style="color:var(--warn);font-size:.82rem">📝 ${esc(c.nota)}</span>`:""}</td>
+                  <td><span class="tag ${c.estado==="cocina"?"warn":c.estado==="listo"?"info":"ok"}">
+                    ${c.estado==="cocina"?"En cocina":c.estado==="listo"?"Listo para servir":"Servido"}</span></td>
+                  <td class="num strong">${money(totalCom(c))}</td>
+                  <td class="num">${c.estado!=="servido"
+                    ? `<button class="btn sm" data-av="${c.id}">${c.estado==="cocina"?"Marcar listo":"Marcar servido"}</button>`
+                    : `<button class="btn sm" data-tk="${c.id}">Ticket</button>`}</td>
+                </tr>`).join("")}</tbody>
+            </table></div></div>
+          </div>`;
+        root.querySelectorAll("[data-av]").forEach(b=>b.onclick=()=>{
+          const c = comandas.find(x=>x.id==b.dataset.av);
+          if(c.estado==="cocina"){ c.estado="listo"; toast("Comanda #"+c.id+" lista para servir","🍽️"); }
+          else { c.estado="servido"; toast("Comanda #"+c.id+" servida","✅"); }
+          refrescar();
+        });
+        root.querySelectorAll("[data-tk]").forEach(b=>b.onclick=()=>
+          toast("Ticket de la comanda #"+b.dataset.tk+" enviado a caja","🧾"));
+      }
+    },
+    /* ---------- Menú ---------- */
+    {
+      id:"menu", nombre:"Menú", ic:"📖",
+      titulo:"Menú digital", sub:"Lo que cambies aquí se ve al instante en el código QR de las mesas",
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="note info"><span class="ic">📱</span><div>
+            <b>Tus clientes ven este menú al escanear el QR de su mesa</b>
+            <span>Apagar un platillo lo oculta de inmediato: se acabó el "ya no hay" a media comanda</span></div></div>
+          <div class="panel">
+            <div class="panel-h"><h2>Platillos y bebidas</h2>
+              <div class="right"><input class="field search" id="q" placeholder="🔍 Buscar…"></div></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Platillo</th><th>Categoría</th><th class="num">Precio</th><th class="num">Vendidos hoy</th><th>Disponible</th></tr></thead>
+              <tbody id="filas"></tbody>
+            </table></div></div>
+          </div>`;
+        const filas = () => {
+          const q = (document.getElementById("q")?.value || "").toLowerCase();
+          const lista = menu.filter(m=>m.n.toLowerCase().includes(q));
+          document.getElementById("filas").innerHTML = lista.length ? lista.map(m=>`
+            <tr>
+              <td><div class="cellmain"><div class="em">${m.e}</div><div><b>${esc(m.n)}</b></div></div></td>
+              <td><span class="tag neutral">${esc(m.cat)}</span></td>
+              <td class="num strong">${money(m.p)}</td>
+              <td class="num">${m.vendidos}</td>
+              <td><button class="btn sm ${m.activo?"":"primary"}" data-tog="${esc(m.n)}">
+                ${m.activo?"Activo ✓":"Agotado"}</button></td>
+            </tr>`).join("") : `<tr><td colspan="5"><div class="empty"><b>Sin resultados</b><p>Prueba con otro nombre.</p></div></td></tr>`;
+          document.querySelectorAll("[data-tog]").forEach(b=>b.onclick=()=>{
+            const m = menu.find(x=>x.n===b.dataset.tog);
+            m.activo = !m.activo;
+            toast(m.activo ? esc(m.n)+" vuelve al menú" : esc(m.n)+" marcado como agotado", m.activo?"✅":"🚫");
+            filas();
+          });
+        };
+        filas();
+        document.getElementById("q").oninput = filas;
+      }
+    },
+    /* ---------- Insumos ---------- */
+    {
+      id:"insumos", nombre:"Insumos", ic:"📦",
+      titulo:"Control de insumos", sub:"El sistema descuenta según lo que se vende y avisa antes de que falte",
+      badge:()=>bajos().length || "",
+      accion:{txt:"Generar pedido a proveedores", fn:(refrescar)=>{
+        if(!bajos().length){ toast("No hay insumos por debajo del mínimo","👌"); return; }
+        const prov = [...new Set(bajos().map(i=>i.prov))];
+        bajos().forEach(i=>{ i.hay = i.min + Math.ceil(i.min*0.5); });
+        toast("Pedido enviado a "+prov.length+" proveedores","🚚");
+        refrescar();
+      }},
+      render(root){
+        root.innerHTML = `
+          <div class="panel">
+            <div class="panel-h"><h2>Existencias</h2><span class="sub">Actualizado con cada comanda servida</span></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Insumo</th><th>Proveedor</th><th class="num">Hay</th><th class="num">Mínimo</th><th style="width:180px">Nivel</th></tr></thead>
+              <tbody>${insumos.map(i=>{
+                const frac = i.hay/(i.min*2);
+                return `<tr>
+                  <td><b>${esc(i.n)}</b></td>
+                  <td style="color:var(--ink-3)">${esc(i.prov)}</td>
+                  <td class="num strong">${i.hay} ${i.u}</td>
+                  <td class="num" style="color:var(--ink-3)">${i.min} ${i.u}</td>
+                  <td>${bar(frac)}${i.hay<i.min?`<span class="tag bad" style="margin-top:6px">Pedir ya</span>`:""}</td>
+                </tr>`;}).join("")}</tbody>
+            </table></div></div>
+          </div>`;
+      }
+    },
+    /* ---------- Reportes ---------- */
+    {
+      id:"reportes", nombre:"Reportes", ic:"📊",
+      titulo:"Cómo va el negocio", sub:"Lo que normalmente sale de sumar tickets a mano el domingo",
+      render(root){
+        const top = [...menu].sort((a,b)=>b.vendidos-a.vendidos).slice(0,5);
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Ventas de la semana</div><div class="val">$48,290</div><div class="delta up">▲ 9% vs. semana pasada</div></div>
+            <div class="kpi"><div class="lbl">Comandas</div><div class="val">312</div><div class="delta up">▲ 24</div></div>
+            <div class="kpi"><div class="lbl">Día más fuerte</div><div class="val">Sábado</div><div class="delta flat">$11,400</div></div>
+            <div class="kpi"><div class="lbl">Merma estimada</div><div class="val">2.1%</div><div class="delta up">▼ 0.6 pts</div></div>
+          </div>
+          <div class="cols">
+            <div class="panel">
+              <div class="panel-h"><h2>Ventas por día</h2><span class="sub">Últimos 7 días</span></div>
+              <div class="panel-b">${chart([
+                {k:"Lun",v:4200},{k:"Mar",v:3800},{k:"Mié",v:5100},{k:"Jue",v:6300},
+                {k:"Vie",v:8900},{k:"Sáb",v:11400,hi:true},{k:"Dom",v:8590}])}</div>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><h2>Más vendidos hoy</h2></div>
+              <div class="panel-b flush"><table class="tbl"><tbody>
+                ${top.map((m,i)=>`<tr>
+                  <td><div class="cellmain"><div class="em">${m.e}</div>
+                    <div><b>${esc(m.n)}</b><span>${m.vendidos} órdenes</span></div></div></td>
+                  <td class="num strong">${money(m.vendidos*m.p)}</td>
+                </tr>`).join("")}
+              </tbody></table></div>
+            </div>
+          </div>`;
+      }
+    }
+  ]
+});
+</script>
+</body>
+</html>

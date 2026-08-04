@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Ferretería El Tornillo — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para una ferretería. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+let catalogo = [
+  {sku:"FER-1021",n:"Cemento gris 50 kg",cat:"Construcción",p:238,st:64,min:30},
+  {sku:"FER-1088",n:"Varilla 3/8 pulg (12 m)",cat:"Construcción",p:165,st:120,min:60},
+  {sku:"FER-1130",n:"Bulto de arena 50 kg",cat:"Construcción",p:85,st:18,min:40},
+  {sku:"FER-1207",n:"Block 15×20×40",cat:"Construcción",p:18,st:500,min:200},
+  {sku:"PLO-2010",n:'Tubo PVC 4 pulg (6 m)',cat:"Plomería",p:210,st:26,min:20},
+  {sku:"PLO-2054",n:'Llave de paso 1/2 pulg',cat:"Plomería",p:145,st:9,min:15},
+  {sku:"ELE-3005",n:"Cable THW cal. 12 (m)",cat:"Eléctrico",p:14,st:300,min:150},
+  {sku:"ELE-3077",n:"Pastilla térmica 20A",cat:"Eléctrico",p:135,st:22,min:12},
+  {sku:"PIN-4001",n:"Vinílica 19 L blanco",cat:"Pintura",p:1150,st:12,min:8},
+  {sku:"PIN-4103",n:"Brocha 4 pulg",cat:"Pintura",p:65,st:55,min:30},
+];
+let cotizaciones = [
+  {folio:"COT-871",cliente:"Constructora Ruiz",obra:"Torre Reforma, 3er nivel",fecha:"hoy",total:3409,estado:"Enviada"},
+  {folio:"COT-812",cliente:"Constructora Hernández",obra:"Av. Juárez 2a etapa",fecha:"22 jul",total:14890,estado:"Aceptada"},
+  {folio:"COT-807",cliente:"Ing. Salas",obra:"Remodelación local",fecha:"18 jul",total:3210,estado:"Pendiente"},
+  {folio:"COT-799",cliente:"Sra. Domínguez",obra:"Casa habitación",fecha:"15 jul",total:1890,estado:"Vencida"},
+];
+let carrito = {};
+const find = s => catalogo.find(x=>x.sku===s);
+const sub = () => Object.entries(carrito).reduce((s,[k,q])=>s+find(k).p*q,0);
+const desc = () => sub()>=3000 ? Math.round(sub()*0.05) : 0;
+const iva = () => Math.round((sub()-desc())*0.16);
+const total = () => sub()-desc()+iva();
+const piezas = () => Object.values(carrito).reduce((a,b)=>a+b,0);
+const bajos = () => catalogo.filter(p=>p.st<p.min);
+const tagEstado = e => e==="Aceptada"?"ok":e==="Enviada"?"info":e==="Pendiente"?"warn":"bad";
+
+startDemo({
+  negocio:"Ferretería El Tornillo", rubro:"Materiales · Oaxaca", emoji:"🔩",
+  secciones:[
+    {
+      id:"cotizador", nombre:"Cotizador", ic:"🧮",
+      titulo:"Armar cotización", sub:"Lo que a mano toma media hora, aquí son dos minutos",
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="cols">
+            <div class="panel">
+              <div class="panel-h"><h2>Catálogo</h2>
+                <div class="right"><input class="field search" id="q" placeholder="🔍 Buscar por nombre o código…"></div></div>
+              <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+                <thead><tr><th>Producto</th><th class="num">Existencia</th><th class="num">Precio</th><th class="num">Cantidad</th></tr></thead>
+                <tbody id="filas"></tbody></table></div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><h2>Resumen</h2></div>
+              <div class="panel-b" id="resumen"></div>
+            </div>
+          </div>`;
+        const pintarResumen = () => {
+          const r = document.getElementById("resumen");
+          if(!piezas()){ r.innerHTML = `<div class="empty"><div class="big">🧾</div><b>Sin productos</b>
+            <p>Agrega piezas del catálogo y el total se calcula solo, con IVA y descuento por volumen.</p></div>`; return; }
+          r.innerHTML = `
+            ${Object.entries(carrito).map(([k,q])=>`
+              <div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:.9rem">
+                <span>${q}× ${esc(find(k).n)}</span><b>${money(find(k).p*q)}</b></div>`).join("")}
+            <div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
+              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.9rem"><span>Subtotal</span><span>${money(sub())}</span></div>
+              ${desc()?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.9rem;color:var(--ok)"><span>Descuento volumen 5%</span><span>−${money(desc())}</span></div>`:""}
+              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.9rem"><span>IVA 16%</span><span>${money(iva())}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:9px 0 0;font-weight:700;font-size:1.05rem;border-top:1px solid var(--line);margin-top:7px"><span>Total</span><span>${money(total())}</span></div>
+            </div>
+            ${sub()<3000?`<div class="note warn" style="margin-top:12px"><span class="ic">💡</span><div>
+              <b>Faltan ${money(3000-sub())} para el 5%</b><span>El descuento por volumen entra desde $3,000</span></div></div>`:""}
+            <input class="field" id="cli" placeholder="Cliente u obra" style="margin-top:12px">
+            <button class="btn primary" id="enviar" style="width:100%;margin-top:9px">Enviar por WhatsApp</button>`;
+          const env = document.getElementById("enviar");
+          env.onclick = () => {
+            const cli = document.getElementById("cli").value.trim();
+            if(!cli){ toast("Escribe el cliente u obra","⚠️"); return; }
+            const folio = "COT-"+Math.floor(872+Math.random()*80);
+            cotizaciones.unshift({folio,cliente:cli,obra:"—",fecha:"hoy",total:total(),estado:"Enviada"});
+            carrito = {};
+            toast(folio+" enviada a "+cli,"📲");
+            refrescar();
+          };
+        };
+        const pintarFilas = () => {
+          const q = (document.getElementById("q").value||"").toLowerCase();
+          const lista = catalogo.filter(p=>(p.n+" "+p.sku).toLowerCase().includes(q));
+          document.getElementById("filas").innerHTML = lista.length ? lista.map(p=>`
+            <tr>
+              <td><b>${esc(p.n)}</b><br><span style="color:var(--ink-3);font-size:.8rem">${p.sku} · ${esc(p.cat)}</span></td>
+              <td class="num">${p.st<p.min?`<span class="tag bad">${p.st}</span>`:p.st}</td>
+              <td class="num strong">${money(p.p)}</td>
+              <td class="num" style="white-space:nowrap">
+                <button class="btn sm" data-m="${p.sku}">−</button>
+                <b style="display:inline-block;min-width:26px;text-align:center">${carrito[p.sku]||0}</b>
+                <button class="btn sm" data-p="${p.sku}">+</button></td>
+            </tr>`).join("") : `<tr><td colspan="4"><div class="empty"><b>Sin resultados</b><p>Prueba con otro nombre o código.</p></div></td></tr>`;
+          document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{
+            carrito[b.dataset.p]=(carrito[b.dataset.p]||0)+1; pintarFilas(); pintarResumen(); });
+          document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{
+            const k=b.dataset.m; if(carrito[k]){carrito[k]--; if(!carrito[k])delete carrito[k];}
+            pintarFilas(); pintarResumen(); });
+        };
+        pintarFilas(); pintarResumen();
+        document.getElementById("q").oninput = pintarFilas;
+      }
+    },
+    {
+      id:"cotizaciones", nombre:"Cotizaciones", ic:"📄",
+      titulo:"Cotizaciones", sub:"Todas quedan guardadas, con su estado y su vigencia",
+      badge:()=>cotizaciones.filter(c=>c.estado==="Pendiente").length||"",
+      render(root, refrescar){
+        const aceptadas = cotizaciones.filter(c=>c.estado==="Aceptada");
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Cotizado este mes</div><div class="val">${money(cotizaciones.reduce((s,c)=>s+c.total,0))}</div><div class="delta flat">${cotizaciones.length} cotizaciones</div></div>
+            <div class="kpi"><div class="lbl">Convertidas en venta</div><div class="val">${aceptadas.length}</div><div class="delta up">${money(aceptadas.reduce((s,c)=>s+c.total,0))}</div></div>
+            <div class="kpi"><div class="lbl">Tasa de cierre</div><div class="val">${Math.round(aceptadas.length/cotizaciones.length*100)}%</div><div class="delta up">▲ 8 pts vs. mes pasado</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h2>Historial</h2></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Folio</th><th>Cliente / obra</th><th>Fecha</th><th class="num">Total</th><th>Estado</th><th></th></tr></thead>
+              <tbody>${cotizaciones.map(c=>`
+                <tr>
+                  <td class="strong">${esc(c.folio)}</td>
+                  <td><b>${esc(c.cliente)}</b><br><span style="color:var(--ink-3);font-size:.82rem">${esc(c.obra)}</span></td>
+                  <td style="color:var(--ink-3)">${esc(c.fecha)}</td>
+                  <td class="num strong">${money(c.total)}</td>
+                  <td><span class="tag ${tagEstado(c.estado)}">${esc(c.estado)}</span></td>
+                  <td class="num">${c.estado==="Enviada"||c.estado==="Pendiente"
+                    ? `<button class="btn sm primary" data-ok="${esc(c.folio)}">Convertir en venta</button>`:""}</td>
+                </tr>`).join("")}</tbody>
+            </table></div></div>
+          </div>`;
+        root.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{
+          const c = cotizaciones.find(x=>x.folio===b.dataset.ok);
+          c.estado="Aceptada";
+          toast(c.folio+" convertida en venta · inventario descontado","💰");
+          refrescar();
+        });
+      }
+    },
+    {
+      id:"inventario", nombre:"Inventario", ic:"📦",
+      titulo:"Inventario", sub:"Con aviso automático a distribuidores cuando algo baja del mínimo",
+      badge:()=>bajos().length||"",
+      accion:{txt:"Pedir a distribuidores", fn:(refrescar)=>{
+        if(!bajos().length){ toast("Todo por encima del mínimo","👌"); return; }
+        const n = bajos().length;
+        bajos().forEach(p=>{ p.st = p.min*2; });
+        toast("Orden de compra enviada para "+n+" productos","🚚");
+        refrescar();
+      }},
+      render(root){
+        root.innerHTML = `
+          ${bajos().length?`<div class="note bad"><span class="ic">⚠️</span><div>
+            <b>${bajos().length} productos por debajo del mínimo</b>
+            <span>${bajos().map(p=>p.n).join(", ")}</span></div></div>`:
+            `<div class="note ok"><span class="ic">✅</span><div><b>Inventario sano</b>
+            <span>Nada por debajo del mínimo. El sistema vigila esto por ti todos los días.</span></div></div>`}
+          <div class="panel">
+            <div class="panel-h"><h2>Existencias por producto</h2></div>
+            <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+              <thead><tr><th>Código</th><th>Producto</th><th class="num">Hay</th><th class="num">Mínimo</th><th style="width:170px">Nivel</th><th class="num">Valor</th></tr></thead>
+              <tbody>${catalogo.map(p=>`
+                <tr>
+                  <td style="color:var(--ink-3)">${p.sku}</td>
+                  <td><b>${esc(p.n)}</b></td>
+                  <td class="num strong">${miles(p.st)}</td>
+                  <td class="num" style="color:var(--ink-3)">${miles(p.min)}</td>
+                  <td>${bar(p.st/(p.min*2))}</td>
+                  <td class="num">${money(p.st*p.p)}</td>
+                </tr>`).join("")}</tbody>
+            </table></div></div>
+          </div>`;
+      }
+    }
+  ]
+});
+</script>
+</body>
+</html>
