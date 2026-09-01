@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://rodtech.vercel.app/sitemap.xml
+Sitemap: https://rodtech-site.vercel.app/sitemap.xml
