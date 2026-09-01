@@ -150,8 +150,30 @@ function setWord(w){
     frag.appendChild(wrap);
   }
   rot.replaceChildren(frag);
+  placeUnderline();
   return [...rot.children];
 }
+
+/* El subrayado de neón se dibuja bajo el ÚLTIMO renglón del rotador, no bajo
+   toda la caja. Palabras largas ("atienda mejor a sus clientes") se parten en
+   dos renglones en teléfonos y también en pantallas muy anchas, y con
+   left:0;width:100% la línea quedaba cruzando el hueco entre renglones,
+   despegada del texto. getClientRects() devuelve un rectángulo por renglón. */
+const rotUnderline = document.querySelector(".rotator-underline");
+const rotBox = document.querySelector(".rotator-box");
+function placeUnderline(){
+  if(!rotUnderline || !rotBox) return;
+  const rects = rot.getClientRects();
+  if(!rects.length) return;
+  const last = rects[rects.length-1];
+  const box = rotBox.getBoundingClientRect();
+  rotUnderline.style.left = Math.max(0, last.left - box.left) + "px";
+  rotUnderline.style.width = last.width + "px";
+}
+addEventListener("resize", placeUnderline);
+/* Las webfonts cambian el ancho del texto al terminar de cargar */
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(placeUnderline);
+
 setWord(words[0]);
 if(!reduced){
   anime({targets:[...rot.children],translateY:[18,0],opacity:[0,1],
@@ -296,12 +318,12 @@ document.querySelectorAll(".service").forEach(card=>{
    Fichas que representan cada demo. Al hacer clic abren el demo real,
    así que la decoración también sirve de puerta de entrada. */
 const TILES = [
-  {id:"restaurante",  em:"🍽️", n:"La Cocina de Rosa",       rows:[["Tacos de pastor","$95"],["Agua del día","$45"],["Flan napolitano","$55"]], foot:"Menú digital · Mesa 4"},
-  {id:"ferreteria",   em:"🔩", n:"Ferretería El Tornillo",  rows:[["Cemento gris 50 kg","$238"],["Varilla 3/8","$165"],["Tubo PVC 4\"","$210"]], foot:"Cotizador · COT-871"},
+  {id:"restaurante",  em:"🍽️", n:"La Cocina de Rosa",       rows:[["Tacos de pastor","$95"],["Agua del día 1 L","$45"],["Listo en","18 min"]], foot:"Menú digital · Mesa 4"},
+  {id:"ferreteria",   em:"🔩", n:"Ferretería El Tornillo",  rows:[["Cemento gris 50 kg","$238"],["Varilla 3/8\"","$165"],["Descuento por volumen","−5%"]], foot:"Cotizador de obra"},
   {id:"farmacia",     em:"💊", n:"Farmacia San Miguel",     rows:[["Caduca en 12 días","⏰"],["Stock bajo","📦"],["Pedido sugerido","🤖"]], foot:"Panel de control"},
   {id:"distribuidora",em:"🚚", n:"Distribuidora del Centro",rows:[["Aceite vegetal 1L","$310"],["Atún en agua","$620"],["Crédito disponible","42%"]], foot:"Portal de clientes"},
   {id:"boutique",     em:"👗", n:"Boutique Alma",           rows:[["Vestido floral","$549"],["Chamarra mezclilla","$729"],["Apartado A-217","✓"]], foot:"Catálogo + apartados"},
-  {id:"taller",       em:"🔧", n:"Taller Rodríguez",        rows:[["Orden A-1042","70%"],["Balatas delanteras","$1,250"],["Chat con el taller","💬"]], foot:"Estatus en vivo"}
+  {id:"taller",       em:"🔧", n:"Taller Rodríguez",        rows:[["Orden A-1042","70%"],["Balatas delanteras","$1,250"],["Chat con el mecánico","💬"]], foot:"Estatus en vivo"}
 ];
 
 function buildTile(t){
@@ -515,3 +537,89 @@ addEventListener("keydown",e=>{ if(e.key==="Escape") closeDemo(); });
 document.querySelectorAll(".biz").forEach(card=>{
   card.addEventListener("click",()=>openDemo(card.dataset.demo));
 });
+
+/* ==================== FORMULARIO DE CONTACTO ====================
+   El sitio se hospeda en Vercel, que a diferencia de Netlify no recolecta
+   formularios. Así que el envío se arma aquí: se compone un mensaje legible
+   con lo que escribió la persona y se abre WhatsApp, que es por donde ya
+   entra el resto de los clientes.
+
+   Si algún día se conecta un servicio de formularios, basta con poner su URL
+   en el atributo data-endpoint del <form>: entonces se hace POST ahí y se
+   lleva a gracias.html, y WhatsApp queda como respaldo si ese POST falla.
+   Nunca se pierde el mensaje. */
+(function initContactForm(){
+  const form = document.getElementById("contactForm");
+  const ok   = document.getElementById("formOk");
+  if(!form || !ok) return;
+
+  const WA_NUM = "529531342851";
+  const okLink = document.getElementById("formOkLink");
+  const btn    = form.querySelector('button[type="submit"]');
+  const again  = document.getElementById("formAgain");
+
+  function mensaje(d){
+    const lineas = [
+      "Hola RodTech, les escribo desde su sitio.",
+      "",
+      "Nombre: " + d.nombre,
+      "Negocio: " + d.negocio,
+      "WhatsApp: " + d.whatsapp
+    ];
+    if(d.correo) lineas.push("Correo: " + d.correo);
+    lineas.push("", "Lo que necesito:", d.mensaje);
+    return lineas.join("\n");
+  }
+
+  function mostrarOk(url){
+    if(okLink) okLink.href = url;
+    form.hidden = true;
+    ok.hidden = false;
+    ok.scrollIntoView({block:"center", behavior: reduced ? "auto" : "smooth"});
+  }
+
+  form.addEventListener("submit", e=>{
+    e.preventDefault();
+    /* La validación nativa ya marcó los campos vacíos */
+    if(!form.reportValidity()) return;
+
+    const fd = new FormData(form);
+    /* Campo trampa: los bots lo llenan, las personas no lo ven */
+    if((fd.get("bot-field")||"").toString().trim()) return;
+
+    const datos = {
+      nombre:   (fd.get("nombre")||"").toString().trim(),
+      negocio:  (fd.get("negocio")||"").toString().trim(),
+      whatsapp: (fd.get("whatsapp")||"").toString().trim(),
+      correo:   (fd.get("correo")||"").toString().trim(),
+      mensaje:  (fd.get("mensaje")||"").toString().trim()
+    };
+    const waUrl = "https://wa.me/" + WA_NUM + "?text=" + encodeURIComponent(mensaje(datos));
+
+    const endpoint = form.dataset.endpoint;
+    if(endpoint){
+      btn.disabled = true;
+      const textoOriginal = btn.textContent;
+      btn.textContent = "Enviando…";
+      fetch(endpoint,{method:"POST",body:fd,headers:{Accept:"application/json"}})
+        .then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); location.href = "gracias.html"; })
+        .catch(()=>{ /* si el servicio falla, el mensaje se va por WhatsApp */
+          btn.disabled = false; btn.textContent = textoOriginal;
+          window.open(waUrl,"_blank","noopener");
+          mostrarOk(waUrl);
+        });
+      return;
+    }
+
+    /* La ventana se abre dentro del clic, que es lo que respetan los
+       bloqueadores de emergentes. Si aun así no abre, queda el enlace. */
+    window.open(waUrl,"_blank","noopener");
+    mostrarOk(waUrl);
+  });
+
+  if(again) again.addEventListener("click",()=>{
+    ok.hidden = true;
+    form.hidden = false;
+    form.querySelector("#f-nombre").focus();
+  });
+})();

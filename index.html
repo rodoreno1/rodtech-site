@@ -7,16 +7,16 @@
 <meta name="description" content="Automatizamos procesos, construimos sistemas a la medida, apps, tiendas en línea y paneles de control para negocios en México. Primera llamada sin costo por WhatsApp.">
 <meta name="author" content="Rodolfo David Bautista Reyes">
 <meta name="theme-color" content="#0A0512">
-<link rel="canonical" href="https://idyllic-khapse-712437.netlify.app/">
+<link rel="canonical" href="https://rodtech.vercel.app/">
 
 <!-- Open Graph: previsualización al compartir por WhatsApp, Facebook, LinkedIn -->
 <meta property="og:type" content="website">
 <meta property="og:locale" content="es_MX">
 <meta property="og:site_name" content="RodTech">
-<meta property="og:url" content="https://idyllic-khapse-712437.netlify.app/">
+<meta property="og:url" content="https://rodtech.vercel.app/">
 <meta property="og:title" content="RodTech — Tecnología a la medida de tu negocio">
 <meta property="og:description" content="Automatización, sistemas a la medida, apps, tiendas en línea e integraciones. Prueba nuestros demos interactivos por tipo de negocio.">
-<meta property="og:image" content="https://idyllic-khapse-712437.netlify.app/og-image.png">
+<meta property="og:image" content="https://rodtech.vercel.app/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="RodTech — Tecnología a la medida para que tu negocio crezca sin límites">
@@ -24,7 +24,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="RodTech — Tecnología a la medida de tu negocio">
 <meta name="twitter:description" content="Automatización, sistemas a la medida, apps, tiendas en línea e integraciones. Prueba nuestros demos interactivos por tipo de negocio.">
-<meta name="twitter:image" content="https://idyllic-khapse-712437.netlify.app/og-image.png">
+<meta name="twitter:image" content="https://rodtech.vercel.app/og-image.png">
 
 <!-- Iconos -->
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -43,8 +43,8 @@
   "@type": "ProfessionalService",
   "name": "RodTech",
   "description": "Tecnología a la medida para negocios: automatización de procesos, sistemas personalizados, apps web y móviles, tiendas en línea, integraciones y paneles de control.",
-  "url": "https://idyllic-khapse-712437.netlify.app/",
-  "image": "https://idyllic-khapse-712437.netlify.app/og-image.png",
+  "url": "https://rodtech.vercel.app/",
+  "image": "https://rodtech.vercel.app/og-image.png",
   "telephone": "+52-953-134-2851",
   "email": "rodobtta@gmail.com",
   "priceRange": "$$",
@@ -384,7 +384,6 @@
         <span class="mono">· Quiénes somos</span>
         <h2>Un equipo enfocado en<br><span class="neon-text">negocios reales</span></h2>
       </div>
-      <p class="side">Con base en Oaxaca. Trabajamos con negocios de toda la República.</p>
     </div>
     <div class="about liquid-glass">
       <div class="about-txt">
@@ -448,7 +447,7 @@
         <div class="faq-body"><p>Ese es justo el punto de hacerlo a la medida. El sistema se diseña alrededor de cómo ya trabajan, no al revés, y capacitamos a tu equipo antes de entregar. Si algo requiere manual de 40 páginas, está mal diseñado.</p></div>
       </details>
       <details class="faq-item liquid-glass">
-        <summary>Estoy fuera de Oaxaca. ¿Trabajas a distancia?</summary>
+        <summary>Estoy fuera de Oaxaca. ¿Trabajan a distancia?</summary>
         <div class="faq-body"><p>Sí, atendemos todo México. Las juntas son por videollamada o WhatsApp y el sistema se entrega en línea. Si tu proyecto amerita ir en persona, lo platicamos.</p></div>
       </details>
     </div>
@@ -465,14 +464,17 @@
       <a class="btn btn-ghost" href="tel:+529531342851">📞 953 134 2851</a>
     </div>
 
-    <div class="form-sep"><span>o déjame tus datos y yo te busco</span></div>
+    <div class="form-sep"><span>o déjanos tus datos y te buscamos</span></div>
 
-    <!-- Netlify Forms: el atributo data-netlify hace que Netlify detecte el
-         formulario al desplegar. netlify-honeypot es un campo trampa para spam. -->
-    <form class="contact-form" name="contacto" method="POST"
-          data-netlify="true" netlify-honeypot="bot-field" action="/gracias.html">
-      <input type="hidden" name="form-name" value="contacto">
-      <p class="hp"><label>No llenes esto: <input name="bot-field"></label></p>
+    <!-- Vercel no tiene un recolector de formularios como Netlify Forms, así que
+         el envío lo arma js/app.js: compone el mensaje y lo abre en WhatsApp, que
+         es por donde ya llega el resto de los clientes.
+         Si algún día contratas un servicio de formularios (Formspree, Web3Forms,
+         una función serverless…), pega su URL en data-endpoint: el formulario
+         hará POST ahí y llevará a gracias.html, y WhatsApp queda de respaldo si
+         ese servicio falla. El campo trampa "bot-field" es contra spam. -->
+    <form class="contact-form" id="contactForm" name="contacto" method="POST" data-endpoint="">
+      <p class="hp" aria-hidden="true"><label>No llenes esto: <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
 
       <div class="ff">
         <label for="f-nombre">Tu nombre *</label>
@@ -499,10 +501,19 @@
           Acepto el <a href="aviso-privacidad.html" target="_blank" rel="noopener">aviso de privacidad</a> y que me contacten sobre mi solicitud. *</label>
       </div>
       <div class="ff ff-full">
-        <button class="btn btn-neon" type="submit">Enviar mensaje</button>
+        <button class="btn btn-neon" type="submit">Enviar por WhatsApp</button>
         <p class="form-note">Contestamos el mismo día hábil. Tus datos no se comparten con nadie.</p>
       </div>
     </form>
+
+    <!-- Lo muestra js/app.js cuando el mensaje ya salió -->
+    <div class="form-ok" id="formOk" hidden>
+      <span class="big">💬</span>
+      <b>Te abrimos WhatsApp con tu mensaje listo</b>
+      <p>Solo dale enviar y te contestamos el mismo día hábil.</p>
+      <p class="form-note">¿No se abrió? <a id="formOkLink" href="#" target="_blank" rel="noopener">Ábrelo desde aquí</a> o escríbenos a <a href="mailto:rodobtta@gmail.com">rodobtta@gmail.com</a>.</p>
+      <button class="btn btn-ghost" type="button" id="formAgain">Escribir otro mensaje</button>
+    </div>
   </div>
 </div>
 </main>
@@ -510,14 +521,18 @@
 <footer>
   <div class="footer-giant">
     <span class="word">RodTech</span>
-    <span class="mono">WhatsApp +52 953 134 2851 · rodobtta@gmail.com</span>
+    <span class="mono">WhatsApp +52 953 134 2851 · <span class="mail">rodobtta@gmail.com</span></span>
   </div>
   <div class="wrap footer-inner">
     <a class="logo" href="#inicio">Rod<span style="color:var(--neon)">Tech</span></a>
-    <p>© 2026 RodTech · Fundada por Rodolfo David Bautista Reyes · Oaxaca, México<br>
-      📞 <a href="tel:+529531342851" style="color:var(--neon);text-decoration:none">+52 953 134 2851</a>
-      · <a href="mailto:rodobtta@gmail.com" style="color:var(--neon);text-decoration:none">rodobtta@gmail.com</a>
-      · <a href="aviso-privacidad.html" style="color:var(--neon);text-decoration:none">Aviso de privacidad</a></p>
+    <div class="footer-meta">
+      <p>© 2026 RodTech · Fundada por Rodolfo David Bautista Reyes · Oaxaca, México</p>
+      <p class="footer-links">
+        <a href="tel:+529531342851">📞 +52 953 134 2851</a>
+        <a href="mailto:rodobtta@gmail.com">✉️ rodobtta@gmail.com</a>
+        <a href="aviso-privacidad.html">Aviso de privacidad</a>
+      </p>
+    </div>
   </div>
 </footer>
 

@@ -11,6 +11,10 @@
   --line:rgba(139,92,246,0.16);
 }
 *{margin:0;padding:0;box-sizing:border-box}
+/* El [hidden] del navegador es `display:none` sin peso de clase, asi que
+   cualquier regla con clase (por ejemplo .contact-form{display:grid}) lo
+   ganaba y el elemento seguia visible aunque el JS lo marcara oculto. */
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{
   font-family:'Instrument Sans',sans-serif;
@@ -178,6 +182,14 @@ nav{
   padding:12px 20px;border-radius:100px;flex-shrink:0;
 }
 .logo span{color:var(--neon)}
+/* Fondo oscuro propio, no solo cristal: la nav queda fija sobre la seccion
+   clara "Proceso" y con un cristal transparente el texto casi blanco
+   desaparecia sobre el fondo claro. */
+nav .logo,nav .nav-links{
+  background:rgba(13,6,29,0.72);
+  backdrop-filter:blur(16px) saturate(140%);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+}
 .nav-links{display:flex;gap:4px;align-items:center;padding:6px;border-radius:100px}
 .nav-links a{
   color:rgba(244,241,255,0.8);text-decoration:none;font-weight:500;font-size:0.94rem;
@@ -192,6 +204,7 @@ nav{
   text-decoration:none;font-size:0.94rem;
   transition:background .25s ease,box-shadow .25s ease;
 }
+.nav-cta{box-shadow:0 6px 24px rgba(10,5,18,0.45)}
 .nav-cta:hover{background:#fff;color:var(--void)!important}
 .nav-cta svg{width:15px;height:15px}
 /* En pantallas angostas la barra de secciones sigue visible: fila deslizable bajo el logo */
@@ -204,7 +217,7 @@ nav{
     scrollbar-width:none;-webkit-overflow-scrolling:touch;justify-content:flex-start;
   }
   .nav-links::-webkit-scrollbar{display:none}
-  .nav-links a{white-space:nowrap;flex-shrink:0;font-size:0.8rem;padding:8px 13px}
+  .nav-links a{white-space:nowrap;flex-shrink:0;font-size:0.875rem;padding:9px 14px}
   section,.cta-section{scroll-margin-top:140px}
 }
 
@@ -248,6 +261,8 @@ nav{
 .hero h1 .line>span{display:inline-block}
 .rotator-box{display:inline-block;position:relative}
 .rotator-underline{
+  /* left/width los fija placeUnderline() en app.js para que la línea siga al
+     último renglón cuando la palabra se parte en dos. */
   position:absolute;left:0;bottom:-2px;height:3px;width:100%;
   background:linear-gradient(90deg,var(--neon),transparent);
   box-shadow:0 0 12px rgba(43,240,228,0.7);
@@ -419,10 +434,14 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
   border-top:1px solid var(--line);border-bottom:1px solid var(--line);
 }
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:54px;position:relative}
+/* width:max-content + fondo opaco: la linea de progreso pasa por detras y
+   queda oculta justo debajo del numero, de modo que el numero se apoya en la
+   linea en vez de aparecer tachado por ella. */
 .step .display{
   font-size:5rem;color:transparent;
   -webkit-text-stroke:1.5px var(--violet);
   margin-bottom:18px;line-height:1;
+  position:relative;z-index:1;width:max-content;padding-right:18px;
 }
 .step h3{font-size:1.42rem;margin-bottom:12px;font-weight:600;line-height:1.25}
 .step p{color:var(--muted);font-size:1.04rem;line-height:1.6}
@@ -454,7 +473,7 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
 .section-light .section-head .side{color:#5A5580}
 .section-light .step h3{color:#16132B}
 .section-light .step p{color:#5A5580}
-.section-light .step .display{-webkit-text-stroke:1.5px rgba(91,46,191,0.45);color:transparent}
+.section-light .step .display{-webkit-text-stroke:1.5px rgba(91,46,191,0.45);color:transparent;background:#F4F4FA}
 .section-light .progress-line{background:rgba(91,46,191,0.18)}
 .section-light .progress-fill{background:linear-gradient(90deg,#7C3AED,#22B5C8);box-shadow:none}
 @media(max-width:640px){.section-light{border-radius:30px 30px 0 0;padding:90px 0 100px}}
@@ -541,8 +560,8 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
 .form-sep{
   position:relative;z-index:1;margin:44px auto 30px;max-width:620px;
   display:flex;align-items:center;gap:16px;color:var(--muted);
-  font-family:'Space Mono',monospace;font-size:0.78rem;
-  text-transform:uppercase;letter-spacing:.12em;
+  font-family:'Space Mono',monospace;font-size:0.875rem;
+  text-transform:uppercase;letter-spacing:.1em;
 }
 .form-sep::before,.form-sep::after{content:"";flex:1;height:1px;background:var(--line)}
 .contact-form{
@@ -569,9 +588,22 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
   display:flex;gap:11px;align-items:flex-start;
   font-weight:400;font-size:0.92rem;color:var(--muted);cursor:pointer;
 }
-.consent input{margin-top:3px;width:17px;height:17px;accent-color:var(--neon);flex-shrink:0}
+.consent input{margin-top:2px;width:22px;height:22px;accent-color:var(--neon);flex-shrink:0}
 .consent a{color:var(--neon)}
 .contact-form button[type=submit]{width:100%;border:none;cursor:pointer;font-family:inherit}
+.contact-form button[type=submit]:disabled{opacity:.6;cursor:default}
+
+/* Confirmación en la misma página: el formulario se oculta y aparece esto */
+.form-ok{
+  position:relative;z-index:1;max-width:620px;margin:0 auto;text-align:center;
+  border:1px solid var(--line);border-radius:18px;padding:34px 26px;
+  background:rgba(43,240,228,0.04);
+}
+.form-ok .big{font-size:2.6rem;display:block;margin-bottom:12px}
+.form-ok b{display:block;font-size:1.2rem;margin-bottom:8px}
+.form-ok p{color:var(--muted);font-size:1rem;margin:0 auto 6px;max-width:44ch}
+.form-ok a{color:var(--neon)}
+.form-ok .btn{margin-top:18px}
 .form-note{margin-top:12px;font-size:0.86rem;color:var(--muted);text-align:center}
 @media(max-width:620px){.contact-form{grid-template-columns:1fr}}
 
@@ -603,10 +635,31 @@ footer{border-top:1px solid var(--line);color:var(--muted);position:relative;z-i
 .footer-giant .mono{display:block;margin-top:28px;color:var(--muted)}
 .footer-inner{
   display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center;
-  padding:28px 0 40px;border-top:1px solid var(--line);margin-top:60px;
+  /* El padding horizontal repite el de .wrap a proposito: esta regla va
+     despues en la hoja y con `28px 0` anulaba el margen lateral, dejando el
+     texto del footer pegado al borde de la pantalla en movil. */
+  padding:28px 28px 40px;border-top:1px solid var(--line);margin-top:60px;
 }
 footer .logo{font-size:1.05rem}
 footer p{font-size:0.95rem;line-height:1.6}
+.footer-meta{text-align:right}
+/* Lista con separacion propia en vez de "·" entre enlaces: al envolverse en
+   movil, el separador se quedaba colgando al final del renglon. El padding
+   ademas les da area de toque (como enlaces de una linea median 19 px). */
+.footer-links{
+  display:flex;flex-wrap:wrap;gap:2px 20px;justify-content:flex-end;margin-top:6px;
+}
+.footer-links a{
+  color:var(--neon);text-decoration:none;display:inline-block;padding:6px 0;
+}
+@media(hover:hover) and (pointer:fine){.footer-links a:hover{text-decoration:underline}}
+@media(max-width:700px){
+  .footer-meta{text-align:left}
+  .footer-links{justify-content:flex-start}
+}
+/* El correo no se pone en mayusculas: una direccion en versalitas se lee peor
+   y no es como se escribe. */
+.footer-giant .mono .mail{text-transform:none;letter-spacing:0.06em}
 
 /* ---------- DEMO MODAL ---------- */
 .modal-overlay{
@@ -623,68 +676,102 @@ footer p{font-size:0.95rem;line-height:1.6}
   box-shadow:0 0 80px rgba(139,92,246,0.35);
 }
 .modal-top{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:16px 20px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0;
 }
-.modal-top .mono{color:var(--neon)}
+/* El titulo va en su propio renglon: el modal mide 420 px como maximo y junto
+   al boton y la equis le quedaban ~100 px, asi que se cortaba en "PEDIDOS EN…".
+   Antes, sin truncar, se partia en tres renglones y empujaba la cabecera. */
+.modal-top{flex-wrap:wrap;row-gap:10px}
+.modal-top .mono{
+  color:var(--neon);flex:1 1 100%;min-width:0;
+  font-size:0.875rem;letter-spacing:0.08em;
+}
 .modal-actions{display:flex;align-items:center;gap:10px}
 .modal-full{
-  font-family:'Space Mono',monospace;font-size:0.76rem;text-transform:uppercase;
-  letter-spacing:0.08em;color:var(--void);background:var(--neon);
-  text-decoration:none;padding:8px 14px;border-radius:100px;white-space:nowrap;
-  font-weight:700;transition:box-shadow .25s ease;
+  font-family:'Space Mono',monospace;font-size:0.875rem;text-transform:uppercase;
+  letter-spacing:0.05em;color:var(--void);background:var(--neon);
+  text-decoration:none;padding:9px 15px;border-radius:100px;white-space:nowrap;
+  font-weight:700;transition:box-shadow .25s ease;flex-shrink:0;
 }
 @media(hover:hover) and (pointer:fine){
   .modal-full:hover{box-shadow:0 0 20px rgba(43,240,228,0.5)}
 }
-@media(max-width:420px){.modal-full{font-size:0.68rem;padding:7px 10px}}
+@media(max-width:430px){.modal-full{padding:9px 12px;letter-spacing:0.02em}}
 .modal-close{
   background:none;border:1px solid var(--line);color:var(--text);
   width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:1rem;
 }
 .modal-close:hover{border-color:var(--neon);color:var(--neon)}
+/* El que hace scroll es .dapp-body, no el marco. Antes scrolleaba el marco
+   entero y .dapp-bar, que estaba en position:absolute, se despegaba del borde
+   inferior y quedaba flotando encima de la lista. */
 .demo-frame{
-  flex:1;overflow-y:auto;background:#F4F4FA;color:#1A1830;
+  flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;
+  background:#F4F4FA;color:#1A1830;
   font-size:0.92rem;line-height:1.5;
 }
 .demo-frame *{box-sizing:border-box}
 .dapp-head{
   background:linear-gradient(120deg,#5B2EBF,#8B5CF6);color:#fff;
-  padding:20px;position:sticky;top:0;z-index:5;
+  padding:18px 16px;flex-shrink:0;z-index:5;
 }
 .dapp-head h4{font-size:1.1rem;font-weight:700;margin:0}
 .dapp-head small{opacity:.85}
-.dapp-body{padding:16px 16px 90px}
+.dapp-body{padding:16px 16px 20px;flex:1 1 auto;min-height:0;overflow-y:auto}
 .dapp-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .dapp-tab{
   border:none;background:#E6E3F5;color:#4B3D8F;font-weight:600;
-  padding:8px 16px;border-radius:100px;cursor:pointer;font-size:0.89rem;
+  padding:9px 16px;border-radius:100px;cursor:pointer;font-size:0.89rem;
+  white-space:nowrap;font-family:inherit;
 }
 .dapp-tab.active{background:#5B2EBF;color:#fff}
+/* El bloque de precio/cantidad baja a un segundo renglon cuando no cabe. Con
+   un `min-width:0` en la columna de texto nunca se rompia la fila: el nombre
+   se exprimia hasta partirse y el precio terminaba pintado a media
+   descripcion. El flex-basis de 158 px es el punto donde deja de caber. */
 .dapp-item{
   background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;
-  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:10px 12px;flex-wrap:wrap;
   box-shadow:0 2px 10px rgba(30,20,80,0.06);
 }
-.dapp-item .info b{display:block;font-size:0.95rem}
-.dapp-item .info span{color:#7A76A0;font-size:0.87rem}
+.dapp-item .main{display:flex;gap:12px;align-items:center;flex:1 1 190px;min-width:190px}
+.dapp-item .side{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
+.dapp-item.is-mute{opacity:.55}
+.dapp-item.is-stacked{align-items:flex-start}
+.dapp-item .tallas{display:flex;gap:8px;flex-wrap:wrap;flex-basis:100%}
+.dapp-item .info{min-width:0}
+.dapp-item .info b{display:block;font-size:0.95rem;line-height:1.35}
+.dapp-item .info .sku{color:#5B2EBF;font-weight:700}
+.dapp-item .price i{font-style:normal;font-weight:500;color:#6E6A92;font-size:0.85em}
+.dapp-item .info span{color:#6E6A92;font-size:0.88rem}
 .dapp-item .price{font-weight:700;color:#5B2EBF;white-space:nowrap}
 .dapp-btn-sm{
   border:none;background:#5B2EBF;color:#fff;font-weight:700;
   width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.1rem;
 }
 .dapp-btn-sm.minus{background:#E6E3F5;color:#4B3D8F}
-.dapp-qty{font-weight:700;min-width:20px;text-align:center}
+.dapp-qty{font-weight:700;min-width:26px;text-align:center}
+.dapp-qty i{font-style:normal;font-weight:500;color:#6E6A92;font-size:0.8em;margin-left:2px}
+.dapp-btn-sm:disabled{opacity:.35;cursor:default}
+.dapp-btn-sm.send{width:42px;height:42px;border-radius:50%;flex-shrink:0}
+/* La barra se parte en dos renglones cuando los botones no caben: en la
+   cotización, "← Editar / PDF / Enviar por WhatsApp" se salía del teléfono. */
 .dapp-bar{
-  position:absolute;bottom:0;left:0;right:0;
+  flex-shrink:0;
   background:#fff;border-top:1px solid #E4E1F2;padding:14px 16px;
-  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:10px 12px;flex-wrap:wrap;
 }
+.dapp-bar .dapp-total{min-width:0}
+.dapp-bar-actions{margin-left:auto}
 .dapp-total b{font-size:1.15rem;color:#1A1830}
 .dapp-total span{display:block;font-size:0.82rem;color:#7A76A0}
 .dapp-cta{
   border:none;background:linear-gradient(120deg,#5B2EBF,#A855F7);color:#fff;
   font-weight:700;padding:13px 22px;border-radius:100px;cursor:pointer;font-size:0.9rem;
+  white-space:nowrap;font-family:inherit;
 }
 .dapp-cta:disabled{opacity:.45;cursor:default}
 .dapp-alert{
@@ -694,8 +781,12 @@ footer p{font-size:0.95rem;line-height:1.6}
 .dapp-alert.red{background:#FDE8EC;border-left:4px solid #E5484D}
 .dapp-alert.amber{background:#FFF3DC;border-left:4px solid #E8A33D}
 .dapp-alert.blue{background:#E7F0FE;border-left:4px solid #3E7BFA}
+/* Los emojis de las alertas y el bloque de texto: sirve para el marcado con
+   clases (.ico/.body) y para el que solo usa span+div. */
+.dapp-alert>span:first-child{font-size:1.3rem;line-height:1.25;flex-shrink:0}
+.dapp-alert>div{flex:1;min-width:0}
 .dapp-alert b{display:block;font-size:0.92rem}
-.dapp-alert span{font-size:0.87rem;color:#6B6790}
+.dapp-alert span{font-size:0.88rem;color:#5E5A82}
 .dapp-timeline{padding:6px 0 0 6px}
 .tl-step{display:flex;gap:14px;position:relative;padding-bottom:26px}
 .tl-step::before{
@@ -709,23 +800,25 @@ footer p{font-size:0.95rem;line-height:1.6}
 .tl-step.done .tl-dot{background:#22B573}
 .tl-step.now .tl-dot{background:#5B2EBF;box-shadow:0 0 0 5px rgba(91,46,191,0.2)}
 .tl-step b{display:block;font-size:0.92rem}
-.tl-step span{font-size:0.85rem;color:#7A76A0}
+.tl-step span{font-size:0.88rem;color:#6E6A92}
 .dapp-success{
   text-align:center;padding:50px 24px;
+  flex:1 1 auto;min-height:0;overflow-y:auto;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
 }
 .dapp-success .big{font-size:3.2rem;margin-bottom:14px}
 .dapp-success b{display:block;font-size:1.15rem;margin-bottom:8px}
-.dapp-success p{color:#6B6790;font-size:0.9rem}
+.dapp-success p{color:#5E5A82;font-size:0.95rem;max-width:34ch}
 .dapp-input{
   width:100%;padding:13px 16px;border-radius:12px;border:1.5px solid #DDD9F0;
   font-size:0.95rem;margin-bottom:12px;font-family:inherit;
 }
 .dapp-input:focus{outline:none;border-color:#5B2EBF}
 .dapp-note{
-  font-size:0.85rem;color:#8A86AC;text-align:center;margin-top:14px;
+  font-size:0.88rem;color:#6E6A92;text-align:center;margin-top:14px;
 }
-.demo-frame::-webkit-scrollbar{width:6px}
-.demo-frame::-webkit-scrollbar-thumb{background:#C9C4E4;border-radius:3px}
+.dapp-body::-webkit-scrollbar{width:6px}
+.dapp-body::-webkit-scrollbar-thumb{background:#C9C4E4;border-radius:3px}
 .dapp-search{
   width:100%;padding:11px 16px;border-radius:100px;border:1.5px solid #DDD9F0;
   font-size:0.9rem;margin-bottom:14px;font-family:inherit;background:#fff;
@@ -745,7 +838,13 @@ footer p{font-size:0.95rem;line-height:1.6}
   border-radius:100px;transform-origin:left center;transform:scaleX(0);
   transition:transform .3s ease;
 }
-.dapp-row{display:flex;justify-content:space-between;font-size:0.91rem;padding:5px 0;color:#4A4670}
+.credit-fill.is-hot{background:linear-gradient(90deg,#E8A33D,#D0323C)}
+.dapp-row{display:flex;justify-content:space-between;gap:12px;font-size:0.91rem;padding:5px 0;color:#4A4670}
+.dapp-row{flex-wrap:wrap}
+.dapp-row>span:first-child{min-width:0}
+.dapp-row>span:last-child{margin-left:auto;text-align:right;white-space:nowrap}
+.dapp-row small{display:block;color:#8A86AC;font-size:0.86em}
+.dapp-row.is-ok{color:#178A56}
 .dapp-row.total{font-weight:700;color:#1A1830;font-size:1rem;border-top:1.5px solid #DDD9F0;margin-top:6px;padding-top:10px}
 .approve-btns{display:flex;gap:10px;margin-top:10px}
 .btn-approve{flex:1;border:none;border-radius:100px;padding:10px;font-weight:700;cursor:pointer;font-size:0.85rem}
@@ -757,7 +856,7 @@ footer p{font-size:0.95rem;line-height:1.6}
   display:flex;align-items:center;justify-content:center;font-size:1.8rem;
 }
 .dapp-badge{
-  display:inline-block;padding:3px 10px;border-radius:100px;font-size:0.76rem;font-weight:700;
+  display:inline-block;padding:3px 10px;border-radius:100px;font-size:0.8rem;font-weight:700;
 }
 .dapp-badge.green{background:#DFF5EA;color:#178A56}
 .dapp-badge.amber{background:#FFF3DC;color:#B87D1E}
@@ -765,8 +864,8 @@ footer p{font-size:0.95rem;line-height:1.6}
 .dapp-badge.red{background:#FDE8EC;color:#E5484D}
 
 /* ---------- DEMOS: componentes de app realista ---------- */
-.dapp-statusbar{display:flex;justify-content:space-between;align-items:center;font-size:0.76rem;opacity:.85;margin-bottom:10px;letter-spacing:.02em}
-.dapp-mini{border:none;background:rgba(255,255,255,0.18);color:#fff;padding:7px 13px;border-radius:100px;font-size:0.75rem;cursor:pointer;font-weight:600;white-space:nowrap}
+.dapp-statusbar{display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;opacity:.85;margin-bottom:10px;letter-spacing:.02em}
+.dapp-mini{border:none;background:rgba(255,255,255,0.18);color:#fff;padding:8px 14px;border-radius:100px;font-size:0.82rem;cursor:pointer;font-weight:600;white-space:nowrap}
 .dapp-mini:hover{background:rgba(255,255,255,0.3)}
 .dapp-toast{
   position:absolute;left:50%;bottom:86px;transform:translateX(-50%) translateY(6px);
@@ -777,17 +876,30 @@ footer p{font-size:0.95rem;line-height:1.6}
 }
 .dapp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
-.stat-card{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 2px 10px rgba(30,20,80,0.06)}
-.stat-card b{display:block;font-size:1.02rem;color:#1A1830}
-.stat-card span{font-size:0.76rem;color:#7A76A0;text-transform:uppercase;letter-spacing:.06em}
-.stat-card em{font-style:normal;font-size:0.77rem;font-weight:700;color:#178A56}
+.stat-card{background:#fff;border-radius:12px;padding:10px;box-shadow:0 2px 10px rgba(30,20,80,0.06)}
+.stat-card b{display:block;font-size:1.02rem;color:#1A1830;line-height:1.2;margin:2px 0}
+.stat-card span{font-size:0.8rem;color:#6E6A92;text-transform:uppercase;letter-spacing:.05em}
+.stat-card em{font-style:normal;font-size:0.8rem;font-weight:700;color:#178A56}
 .prod-emoji{width:46px;height:46px;border-radius:12px;background:#EDE8FB;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.prod-emoji.lg{font-size:1.75rem}
+.avatar{
+  width:46px;height:46px;border-radius:50%;background:#EDE8FB;color:#5B2EBF;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.95rem;font-weight:700;flex-shrink:0;
+}
 .fav-btn{border:none;background:none;font-size:1.05rem;cursor:pointer;padding:2px}
 .chat-list{display:flex;flex-direction:column;gap:8px;padding-bottom:10px}
 .chat-msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:0.88rem;line-height:1.4}
 .chat-msg.them{background:#fff;border-bottom-left-radius:4px;box-shadow:0 2px 10px rgba(30,20,80,0.06);align-self:flex-start}
 .chat-msg.me{background:#5B2EBF;color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
-.chat-msg small{display:block;font-size:0.75rem;opacity:.6;margin-top:4px}
+.chat-msg small{display:block;font-size:0.8rem;opacity:.7;margin-top:4px}
+/* "Escribiendo…" del mecanico: tres puntos que rebotan, como en WhatsApp */
+.chat-msg.typing{display:flex;gap:5px;padding:14px 16px}
+.chat-msg.typing i{width:7px;height:7px;border-radius:50%;background:#B6B1D6;animation:typing 1.1s infinite}
+.chat-msg.typing i:nth-child(2){animation-delay:.18s}
+.chat-msg.typing i:nth-child(3){animation-delay:.36s}
+@keyframes typing{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+.chat-list{max-height:none}
 .chat-input-row{display:flex;gap:8px;margin-top:4px}
 .chat-input-row .dapp-input{margin-bottom:0;flex:1}
 textarea.dapp-input{resize:none;min-height:64px}
@@ -799,7 +911,97 @@ textarea.dapp-input{resize:none;min-height:64px}
 .skel-head{height:20px;width:55%;margin-bottom:12px}
 .skel-item{height:62px;margin-bottom:10px}
 .photo{flex-direction:column;gap:4px}
-.photo small{font-size:0.72rem;color:#6B6790;font-weight:600}
+.photo small{font-size:0.8rem;color:#5E5A82;font-weight:600}
+
+/* ---------- DEMOS: componentes nuevos de la maqueta de app ---------- */
+.dapp-head-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dapp-head-txt{min-width:0}
+.dapp-head-txt h4{overflow-wrap:anywhere}
+
+/* Etiqueta de campo o de grupo dentro de la app */
+.dapp-label{margin:14px 0 8px;font-weight:600;font-size:0.9rem;color:#2C2850;display:block}
+.dapp-label:first-child{margin-top:0}
+
+/* Hilera de chips seleccionables */
+.dapp-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+
+/* Tarjeta blanca genérica (crédito, resumen, gráfica) */
+.dapp-card{
+  background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;
+  box-shadow:0 2px 10px rgba(30,20,80,0.06);
+}
+/* Hoja de totales: el desglose de una cuenta o cotización */
+.dapp-sheet{
+  background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;
+  box-shadow:0 2px 10px rgba(30,20,80,0.06);
+}
+.muted{color:#6E6A92}
+.small{font-size:0.8rem}
+.is-ok{color:#178A56}
+.is-bad{color:#D0323C}
+
+/* Estado vacío: en vez de un renglón suelto de texto gris */
+.dapp-empty{text-align:center;padding:34px 20px;color:#5E5A82}
+.dapp-empty span{font-size:2.2rem;display:block;margin-bottom:10px}
+.dapp-empty b{display:block;font-size:1rem;color:#1A1830;margin-bottom:6px}
+.dapp-empty p{font-size:0.9rem;max-width:32ch;margin:0 auto}
+
+/* Cuenta regresiva de la comanda */
+.dapp-countdown{
+  background:linear-gradient(120deg,#5B2EBF,#8B5CF6);color:#fff;
+  border-radius:14px;padding:14px 16px;margin-bottom:14px;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+}
+.dapp-countdown span{font-size:0.85rem;opacity:.85;display:block}
+.dapp-countdown b{font-size:1.9rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.dapp-countdown .dapp-badge{background:rgba(255,255,255,0.22);color:#fff}
+
+/* Comanda impresa de cocina */
+.dapp-ticket{
+  background:#fff;border-radius:14px;padding:16px;
+  font-family:'Space Mono',ui-monospace,monospace;font-size:0.88rem;
+  box-shadow:0 2px 10px rgba(30,20,80,0.06);
+}
+.ticket-head{text-align:center;border-bottom:1.5px dashed #DDD9F0;padding-bottom:8px;margin-bottom:8px}
+.ticket-head span{display:block;font-size:0.82rem;color:#7A76A0}
+.ticket-nota{border-top:1.5px dashed #DDD9F0;padding-top:8px;margin-top:8px;color:#B87D1E}
+
+/* Comprobante dentro de la pantalla de éxito */
+.dapp-receipt{
+  background:#fff;border-radius:14px;padding:14px 16px;margin:16px 0 4px;
+  width:100%;max-width:320px;text-align:left;
+  box-shadow:0 2px 10px rgba(30,20,80,0.06);
+}
+
+/* Botón de "repetir mi pedido" */
+.dapp-repeat{
+  width:100%;margin-bottom:12px;text-align:left;cursor:pointer;
+  border:1.5px dashed #C9C2EC;background:#fff;color:#4B3D8F;
+  border-radius:14px;padding:12px 16px;font-weight:600;font-size:0.92rem;font-family:inherit;
+}
+.dapp-repeat small{display:block;font-weight:500;color:#6E6A92;font-size:0.85rem;margin-top:2px}
+@media(hover:hover) and (pointer:fine){.dapp-repeat:hover{border-color:#5B2EBF;background:#FAF9FF}}
+
+/* Validación de formulario */
+.dapp-input.is-error{border-color:#D0323C;background:#FFF7F8}
+.dapp-error{color:#D0323C;font-size:0.88rem;margin:-6px 0 12px}
+.dapp-cta.full{width:100%}
+.dapp-bar-actions{display:flex;gap:8px;flex-shrink:0}
+
+/* Casilla dentro de la app simulada */
+.dapp-check{
+  display:flex;gap:11px;align-items:center;margin-top:14px;cursor:pointer;
+  background:#fff;border-radius:14px;padding:13px 16px;font-size:0.92rem;
+  box-shadow:0 2px 10px rgba(30,20,80,0.06);
+}
+.dapp-check input{width:20px;height:20px;accent-color:#5B2EBF;flex-shrink:0}
+
+/* Gráfica de barras de la semana */
+.spark{display:flex;align-items:flex-end;gap:6px;height:74px;margin-top:6px}
+.spark-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:5px}
+.spark-col i{width:100%;background:#DED7F7;border-radius:5px 5px 0 0;min-height:4px}
+.spark-col i.hoy{background:linear-gradient(180deg,#8B5CF6,#5B2EBF)}
+.spark-col em{font-style:normal;font-size:0.78rem;color:#7A76A0;font-weight:600}
 
 /* ---------- HERO EN PANTALLAS DE POCA ALTURA ----------
    Va al final a propósito: comparte especificidad con las reglas .hero de
@@ -816,6 +1018,34 @@ textarea.dapp-input{resize:none;min-height:64px}
   .stat .lbl{font-size:0.88rem}
 }
 
+/* ---------- AJUSTES DE PANTALLA ANGOSTA ----------
+   Va despues del bloque @media(max-height:900px) a proposito: comparte
+   especificidad con el, asi que solo gana si aparece mas abajo. */
+@media(max-width:860px){
+  /* La nav pasa a dos filas (logo + tira de secciones) y ocupa unos 112 px.
+     Con el padding de escritorio el H1 quedaba tapado por la barra. */
+  .hero{padding:158px 0 48px}
+  .hero h1{font-size:clamp(2.05rem,8.4vw,4.5rem)}
+  .hero p{margin-top:20px;font-size:1.05rem}
+  .hero-stats{margin-top:24px}
+  .smarquee{padding:44px 0 40px}
+  section{padding:96px 0}
+  .section-head{margin-bottom:44px}
+  /* Sin esto el bloque del CTA arrancaba con ~260 px de vacio en movil */
+  .cta-section{padding:80px 16px}
+  .cta{padding:56px 22px;border-radius:26px}
+  .cta p{margin-bottom:34px}
+  .cta::before{width:420px;height:420px;top:-180px}
+  .footer-giant{padding:70px 0 30px}
+  .footer-inner{padding:24px 16px 32px;margin-top:36px}
+}
+
+/* Foco visible en todo lo que se puede accionar con el teclado, no solo en
+   enlaces y botones de marca (antes los controles de los demos no lo tenian). */
+a:focus-visible,button:focus-visible,summary:focus-visible,
+input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--neon);outline-offset:3px;border-radius:6px;
+}
 a:focus-visible,.btn:focus-visible{outline:3px solid var(--neon);outline-offset:3px}
 /* Reduced-motion significa menos movimiento, no cero: se conservan las
    transiciones de color y opacidad (ayudan a entender qué cambió) y se

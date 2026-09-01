@@ -50,7 +50,9 @@ a{color:var(--brand)}
   transition:background .2s ease;
 }
 @media(hover:hover) and (pointer:fine){.demo-strip a:hover{background:rgba(255,255,255,.14)}}
-@media(max-width:720px){.demo-strip .hide-sm{display:none}}
+/* El separador se va junto con el texto que separaba: si no, queda un "·"
+   suelto entre "Demostración" y el botón de volver. */
+@media(max-width:720px){.demo-strip .hide-sm,.demo-strip .sep{display:none}}
 
 /* ---------- Estructura ---------- */
 .app{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 39px)}
@@ -133,7 +135,18 @@ a{color:var(--brand)}
 @media(hover:hover) and (pointer:fine){.tbl tbody tr:hover{background:#FAFAFD}}
 .tbl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tbl .strong{font-weight:700}
-.tbl-wrap{overflow-x:auto}
+/* Sombras de scroll: en un telefono todas las tablas son mas anchas que la
+   pantalla y no habia ninguna senal de que se pudieran deslizar. Las capas
+   `local` tapan la sombra cuando ya llegaste al borde, asi que la pista
+   aparece y desaparece sola sin una linea de JavaScript. */
+.tbl-wrap{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  background:
+    linear-gradient(90deg,var(--surface) 30%,rgba(255,255,255,0)) left/38px 100% no-repeat local,
+    linear-gradient(90deg,rgba(255,255,255,0),var(--surface) 70%) right/38px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%,rgba(20,15,60,.16),transparent) left/13px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%,rgba(20,15,60,.16),transparent) right/13px 100% no-repeat scroll;
+}
 .cellmain{display:flex;align-items:center;gap:11px;min-width:0}
 .cellmain .em{
   width:36px;height:36px;border-radius:9px;background:var(--brand-soft);
