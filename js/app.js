@@ -6,7 +6,10 @@ const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
    final contra el principio: sin esto se ve un corte seco en cada vuelta.
    La opacidad la mueve requestAnimationFrame, nunca una transición CSS,
    porque cada fade debe poder arrancar desde donde quedó el anterior. */
-const HERO_VIDEO_SRC = "video/hero.mp4";
+/* Deja esto vacio hasta tener un video en video/hero.mp4; asi no se pide
+   nada que no exista y la consola queda limpia. Para activarlo:
+   const HERO_VIDEO_SRC = "video/hero.mp4"; */
+const HERO_VIDEO_SRC = "";
 
 function fadingVideo(video, src){
   const FADE_MS = 500, FADE_OUT_LEAD = 0.55;
@@ -58,7 +61,7 @@ function fadingVideo(video, src){
 (function initHeroVideo(){
   const wrap = document.getElementById("heroVideoWrap");
   const video = document.getElementById("heroVideo");
-  if(!wrap || !video || reduced) return;
+  if(!wrap || !video || reduced || !HERO_VIDEO_SRC) return;
   video.addEventListener("error",()=>{
     wrap.hidden = true;
     document.body.classList.remove("has-hero-video");
@@ -67,7 +70,8 @@ function fadingVideo(video, src){
     wrap.hidden = false;
     document.body.classList.add("has-hero-video");
   },{once:true});
-  fadingVideo(video, HERO_VIDEO_SRC);
+  /* HEAD primero: si no hay video no se dispara ningun 404 en consola */
+  fetch(HERO_VIDEO_SRC,{method:"HEAD"}).then(r=>{ if(r.ok) fadingVideo(video, HERO_VIDEO_SRC); }).catch(()=>{});
 })();
 
 /* ==================== BLUR TEXT: entrada palabra por palabra ====================
@@ -236,7 +240,7 @@ function resize(){
   H = canvas.height = canvas.offsetHeight * devicePixelRatio;
 }
 resize(); addEventListener("resize",resize);
-const COUNT = innerWidth < 700 ? 45 : 100;
+const COUNT = innerWidth < 700 ? 40 : 70;
 for(let i=0;i<COUNT;i++){
   nodes.push({
     x:Math.random(), y:Math.random(),
@@ -294,16 +298,19 @@ if(!reduced) draw();
 
 /* ---------- CURSOR GLOW ---------- */
 const glow = document.getElementById("glow");
-addEventListener("mousemove",e=>{
-  gsap.to(glow,{x:e.clientX,y:e.clientY,duration:0.5,ease:"power2.out"});
-});
+/* Un solo tween por fotograma y solo con puntero fino: antes se encolaba
+   un tween por cada evento de raton. */
+if(matchMedia("(hover:hover) and (pointer:fine)").matches){
+  let gx=0,gy=0,gq=false;
+  addEventListener("mousemove",e=>{ gx=e.clientX; gy=e.clientY;
+    if(!gq){ gq=true; requestAnimationFrame(()=>{ gq=false; gsap.to(glow,{x:gx,y:gy,duration:0.5,ease:"power2.out",overwrite:"auto"}); }); }
+  },{passive:true});
+}
 
 /* ---------- AURORAS FLOTANTES ---------- */
-if(!reduced){
-  gsap.to(".aurora-1",{x:"14vw",y:"12vh",duration:14,yoyo:true,repeat:-1,ease:"sine.inOut"});
-  gsap.to(".aurora-2",{x:"-12vw",y:"-14vh",duration:17,yoyo:true,repeat:-1,ease:"sine.inOut"});
-  gsap.to(".aurora-3",{x:"-16vw",y:"10vh",duration:12,yoyo:true,repeat:-1,ease:"sine.inOut"});
-}
+/* Las auroras ya no se animan: tres capas de 60vw con blur moviendose
+   obligaban a recomponer todo el fondo en cada fotograma. Quietas se
+   pintan una sola vez. */
 
 /* ---------- SPOTLIGHT EN TARJETAS ---------- */
 document.querySelectorAll(".service").forEach(card=>{
@@ -338,7 +345,7 @@ function buildTile(t){
        ${t.rows.map(([a,c])=>`<div class="stile-line">${a}<i>${c}</i></div>`).join("")}
      </div>
      <div class="stile-foot">${t.foot}</div>`;
-  b.addEventListener("click",()=>openDemo(t.id));
+  b.addEventListener("click",()=>openDemo(t.id, b));
   return b;
 }
 
@@ -358,9 +365,7 @@ function buildTile(t){
 
   if(reduced) return;   /* sin movimiento: las fichas se quedan quietas */
 
-  let ticking = false;
   function place(){
-    ticking = false;
     const rect = wrap.getBoundingClientRect();
     /* Solo trabaja mientras la sección está cerca del viewport */
     if(rect.bottom < -200 || rect.top > innerHeight + 200) return;
@@ -368,8 +373,11 @@ function buildTile(t){
     row1.style.transform = `translateX(${offset - 400}px)`;
     row2.style.transform = `translateX(${-(offset - 400)}px)`;
   }
-  function onScroll(){ if(!ticking){ ticking = true; requestAnimationFrame(place); } }
-  addEventListener("scroll",onScroll,{passive:true});
+  /* Directo en el evento, sin pasar por requestAnimationFrame: si un rAF se
+     perdia (pestana en segundo plano, panel sin componer) la bandera
+     "ticking" se quedaba en true y el marquee se congelaba para siempre.
+     Son dos escrituras de transform; no hace falta coalescer. */
+  addEventListener("scroll",place,{passive:true});
   addEventListener("resize",place);
   place();
 })();
@@ -513,7 +521,9 @@ const frame = document.getElementById("demoFrame");
 const demoTitle = document.getElementById("demoTitle");
 const money = n => "$" + n.toLocaleString("es-MX",{minimumFractionDigits:2});
 
-function openDemo(id){
+let demoTrigger = null;
+function openDemo(id, trigger){
+  demoTrigger = trigger || document.activeElement;
   if(typeof clearDemoTimers==="function") clearDemoTimers();
   demoTitle.textContent = DEMOS[id].title;
   /* El modal es la probada rápida; el enlace lleva al sistema completo */
@@ -523,6 +533,8 @@ function openDemo(id){
   DEMOS[id].render(frame);
   overlay.classList.add("open");
   document.body.style.overflow = "hidden";
+  /* El foco entra al dialogo: lectores de pantalla y teclado lo necesitan */
+  document.getElementById("demoClose").focus();
 }
 function closeDemo(){
   overlay.classList.remove("open");
@@ -530,12 +542,25 @@ function closeDemo(){
   /* Detiene comandas, chats y notificaciones pendientes del demo abierto */
   if(typeof clearDemoTimers==="function") clearDemoTimers();
   document.querySelectorAll(".dapp-toast").forEach(t=>t.remove());
+  if(demoTrigger && demoTrigger.focus) demoTrigger.focus();
 }
 document.getElementById("demoClose").addEventListener("click",closeDemo);
 overlay.addEventListener("click",e=>{ if(e.target===overlay) closeDemo(); });
-addEventListener("keydown",e=>{ if(e.key==="Escape") closeDemo(); });
+addEventListener("keydown",e=>{
+  if(!overlay.classList.contains("open")) return;
+  if(e.key==="Escape"){ closeDemo(); return; }
+  /* Tab se queda dentro del modal */
+  if(e.key==="Tab"){
+    const f=[...overlay.querySelectorAll("button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex=\"-1\"])")].filter(x=>x.offsetParent!==null);
+    if(!f.length) return;
+    const first=f[0], last=f[f.length-1];
+    if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  }
+});
 document.querySelectorAll(".biz").forEach(card=>{
-  card.addEventListener("click",()=>openDemo(card.dataset.demo));
+  card.addEventListener("click",()=>openDemo(card.dataset.demo, card));
+  card.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openDemo(card.dataset.demo, card); } });
 });
 
 /* ==================== FORMULARIO DE CONTACTO ====================

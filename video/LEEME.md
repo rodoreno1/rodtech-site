@@ -1,9 +1,9 @@
 # Video de fondo del hero
 
-Deja aquí un archivo llamado **`hero.mp4`** y el fondo cinematográfico se
-enciende solo. No hay que tocar código: `js/app.js` intenta cargar
-`video/hero.mp4` al arrancar y, si el archivo no existe, se queda el fondo de
-partículas sin mostrar ningún hueco negro.
+Deja aquí un archivo llamado **`hero.mp4`** y en `js/app.js` cambia la
+constante `HERO_VIDEO_SRC` de `""` a `"video/hero.mp4"`. Mientras esté vacía
+el sitio no pide ningún video (así la consola no muestra un 404) y se queda
+el fondo de partículas.
 
 Cuando el video sí carga, el sitio además baja la opacidad de las partículas y
 la rejilla para que no compitan con la imagen.

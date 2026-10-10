@@ -1,14 +1,14 @@
 :root{
-  --void:#0A0512;
-  --panel:rgba(21,11,46,0.5);
-  --panel2:#1D1140;
+  --void:#06030C;
+  --panel:rgba(14,8,30,0.72);
+  --panel2:#110A26;
   --violet:#8B5CF6;
   --violet-soft:#A78BFA;
   --neon:#2BF0E4;
   --pink:#FF3DDB;
   --text:#F4F1FF;
-  --muted:#8E84B8;
-  --line:rgba(139,92,246,0.16);
+  --muted:#9B92C6;
+  --line:rgba(139,92,246,0.14);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 /* El [hidden] del navegador es `display:none` sin peso de clase, asi que
@@ -56,10 +56,10 @@ h1,h2,.display{
    es un ::before con degradado recortado por mask-composite, para que
    la luz sea intensa arriba y abajo y desaparezca a media altura. */
 .liquid-glass{
-  background:rgba(255,255,255,0.01);
+  background:rgba(255,255,255,0.035);
   background-blend-mode:luminosity;
-  backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
+  /* sin backdrop-filter aqui: 49 capas desenfocadas tiraban el framerate.
+     El desenfoque real solo lo llevan el nav y el modal (ver abajo). */
   border:none;
   box-shadow:inset 0 1px 1px rgba(255,255,255,0.1);
   position:relative;
@@ -115,6 +115,7 @@ h1,h2,.display{
 }
 /* El contenido debe quedar por encima del borde de luz */
 .liquid-glass > *,.liquid-glass-strong > *{position:relative;z-index:2}
+.nav-links.liquid-glass,.logo.liquid-glass{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(6,3,12,0.55)}
 
 /* ---------- VIDEO DE FONDO DEL HERO ---------- */
 #heroVideoWrap{
@@ -155,7 +156,7 @@ body.has-hero-video .hero::before{opacity:.35}
 
 /* ---------- GRAIN ---------- */
 #grain{
-  position:fixed;inset:0;z-index:50;pointer-events:none;opacity:.4;mix-blend-mode:overlay;
+  position:fixed;inset:0;z-index:50;pointer-events:none;opacity:.2;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
 }
 
@@ -232,16 +233,16 @@ nav .logo,nav .nav-links{
 .hero::before{
   content:"";position:absolute;inset:0;
   background-image:
-    linear-gradient(rgba(139,92,246,0.05) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(139,92,246,0.05) 1px,transparent 1px);
+    linear-gradient(rgba(139,92,246,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(139,92,246,0.03) 1px,transparent 1px);
   background-size:64px 64px;
   mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,black 30%,transparent 75%);
   z-index:0;
 }
-#net{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;opacity:.7}
+#net{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;opacity:.45}
 .aurora{
-  position:fixed;border-radius:50%;filter:blur(100px);z-index:-2;pointer-events:none;
-  opacity:0.35;
+  position:fixed;border-radius:50%;filter:blur(70px);z-index:-2;pointer-events:none;
+  opacity:0.16;
 }
 .aurora-1{width:60vw;height:60vw;background:radial-gradient(circle,rgba(139,92,246,0.5),transparent 65%);top:-15%;left:-10%}
 .aurora-2{width:50vw;height:50vw;background:radial-gradient(circle,rgba(43,240,228,0.25),transparent 65%);bottom:-15%;right:-10%}
@@ -457,25 +458,25 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
 /* ---------- SECCIÓN CLARA (corte de ritmo) ----------
    Se monta sobre la sección oscura anterior con esquinas redondeadas. */
 .section-light{
-  background:#F4F4FA;color:#16132B;
+  background:linear-gradient(180deg,#0E0820 0%,#0A0618 100%);color:var(--text);
   border-radius:44px 44px 0 0;
   margin-top:-40px;position:relative;z-index:3;
   padding:120px 0 130px;
   border-top:none;
 }
-.section-light .section-head .mono{color:#7A3FD6}
-.section-light .section-head h2{color:#0F0C1F}
+.section-light .section-head .mono{color:var(--pink)}
+.section-light .section-head h2{color:var(--text)}
 /* El degradado de marca es de pasteles claros: sobre fondo claro
    desaparece, así que aquí va una versión saturada y oscura. */
 .section-light .neon-text{
-  background-image:linear-gradient(95deg,#6D28D9 0%,#0E9AAE 52%,#C0208F 100%);
+  background-image:linear-gradient(95deg,var(--violet-soft) 0%,var(--neon) 50%,var(--pink) 100%);
 }
-.section-light .section-head .side{color:#5A5580}
-.section-light .step h3{color:#16132B}
-.section-light .step p{color:#5A5580}
-.section-light .step .display{-webkit-text-stroke:1.5px rgba(91,46,191,0.45);color:transparent;background:#F4F4FA}
-.section-light .progress-line{background:rgba(91,46,191,0.18)}
-.section-light .progress-fill{background:linear-gradient(90deg,#7C3AED,#22B5C8);box-shadow:none}
+.section-light .section-head .side{color:var(--muted)}
+.section-light .step h3{color:var(--text)}
+.section-light .step p{color:var(--muted)}
+.section-light .step .display{-webkit-text-stroke:1.5px rgba(139,92,246,0.55);color:transparent;background:#0E0820}
+.section-light .progress-line{background:var(--line)}
+.section-light .progress-fill{background:linear-gradient(90deg,var(--violet),var(--neon));box-shadow:0 0 14px rgba(43,240,228,0.6)}
 @media(max-width:640px){.section-light{border-radius:30px 30px 0 0;padding:90px 0 100px}}
 
 /* ---------- TARJETAS QUE SE APILAN AL HACER SCROLL ----------
@@ -1063,3 +1064,7 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--neon);outline-offset:
   .dapp-toast,.dapp-toast.show{transform:translateX(-50%)!important}
   .scroll-hint{display:none}
 }
+
+/* ---------- ACCESIBILIDAD: foco y objetivos tactiles ---------- */
+.biz:focus-visible,.stile:focus-visible,.faq-item summary:focus-visible{outline:3px solid var(--neon);outline-offset:3px}
+footer .footer-inner a{display:inline-block;padding:8px 2px}
