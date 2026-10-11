@@ -270,7 +270,7 @@ function draw(){
       const dx=(a.x-b.x)*W, dy=(a.y-b.y)*H;
       const d=Math.hypot(dx,dy);
       if(d<120*devicePixelRatio){
-        ctx.strokeStyle=`rgba(139,92,246,${(1-d/(120*devicePixelRatio))*0.28})`;
+        ctx.strokeStyle=`rgba(255,255,255,${(1-d/(120*devicePixelRatio))*0.13})`;
         ctx.lineWidth=0.8;
         ctx.beginPath();
         ctx.moveTo(a.x*W,a.y*H);
@@ -287,7 +287,7 @@ function draw(){
       ? "rgba(43,240,228,1)"
       : n.cyan
         ? `rgba(43,240,228,${0.25 + twinkle*0.4})`
-        : `rgba(167,139,250,${0.3 + twinkle*0.45})`;
+        : `rgba(210,210,216,${0.2 + twinkle*0.4})`;
   ctx.beginPath();
     ctx.arc(n.x*W,n.y*H,n.r*devicePixelRatio*(near?1.7:1),0,Math.PI*2);
     ctx.fill();
@@ -560,6 +560,18 @@ addEventListener("keydown",e=>{
     const first=f[0], last=f[f.length-1];
     if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
     else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  }
+});
+/* Vista previa en cada tarjeta de giro, armada con los mismos datos de las
+   fichas del marquee (TILES) para no duplicar contenido. */
+document.querySelectorAll(".biz").forEach(card=>{
+  const t = TILES.find(x=>x.id===card.dataset.demo);
+  if(t && !card.querySelector(".biz-preview")){
+    const pv = document.createElement("div");
+    pv.className = "biz-preview"; pv.setAttribute("aria-hidden","true");
+    pv.innerHTML = `<div class="pv-top"><i>${t.em}</i>${t.n}<span class="pv-dots"><b></b><b></b><b></b></span></div>
+      <div class="pv-body">${t.rows.slice(0,3).map(([a,c])=>`<div class="pv-row">${a}<i>${c}</i></div>`).join("")}</div>`;
+    card.prepend(pv);
   }
 });
 document.querySelectorAll(".biz").forEach(card=>{
