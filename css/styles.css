@@ -185,15 +185,11 @@ nav{
   padding:12px 20px;border-radius:100px;flex-shrink:0;
 }
 .logo span{color:var(--neon)}
-/* Fondo oscuro propio, no solo cristal: la nav queda fija sobre la seccion
-   clara "Proceso" y con un cristal transparente el texto casi blanco
-   desaparecia sobre el fondo claro. */
-nav .logo,nav .nav-links{
-  background:rgba(13,6,29,0.72);
-  backdrop-filter:blur(16px) saturate(140%);
-  -webkit-backdrop-filter:blur(16px) saturate(140%);
-}
-.nav-links{display:flex;gap:4px;align-items:center;padding:6px;border-radius:100px}
+/* El fondo oscuro de la píldora vive en .nav-links.liquid-glass (arriba, con
+   la paleta): la nav queda fija sobre la sección clara "Proceso" y sin fondo
+   propio el texto casi blanco desaparecía. */
+.nav-links{display:flex;align-items:center;padding:6px;border-radius:100px}
+.nav-scroll{display:flex;gap:4px;align-items:center;min-width:0}
 .nav-links a{
   color:rgba(244,241,255,0.8);text-decoration:none;font-weight:500;font-size:0.94rem;
   padding:9px 17px;border-radius:100px;transition:color .25s ease,background .25s ease;
@@ -215,17 +211,23 @@ nav .logo,nav .nav-links{
   nav{top:10px;padding:0 14px}
   .nav-inner{flex-wrap:wrap;row-gap:8px;justify-content:center}
   .logo{padding:10px 16px;font-size:1rem}
-  .nav-links{
-    order:3;width:100%;overflow-x:auto;gap:2px;
-    scrollbar-width:none;-webkit-overflow-scrolling:touch;justify-content:flex-start;
+  .nav-links{order:3;width:100%;padding:6px 0 6px 6px;justify-content:flex-start}
+  .nav-scroll{
+    width:100%;overflow-x:auto;gap:2px;justify-content:flex-start;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    /* El último enlace termina antes de la zona del degradado: así al llegar
+       al final se lee completo. */
+    padding-right:44px;
   }
-  .nav-links::-webkit-scrollbar{display:none}
-  /* Pista de que la fila sigue: el borde derecho se desvanece. El padding
-     extra hace que, al llegar al final, el último enlace quede antes del
-     degradado y se lea completo. */
-  .nav-links{padding-right:34px;
-    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 34px),transparent);
-    mask-image:linear-gradient(90deg,#000 calc(100% - 34px),transparent)}
+  .nav-scroll::-webkit-scrollbar{display:none}
+  /* Pista de que la fila sigue: un degradado SOBRE la píldora, no una máscara
+     en ella. Con mask-image la píldora misma se desvanecía por la derecha y
+     se veía cortada, sin su extremo redondeado ni su borde. */
+  .nav-links::after{
+    content:"";position:absolute;top:1.5px;bottom:1.5px;right:1.5px;width:52px;
+    border-radius:0 100px 100px 0;pointer-events:none;z-index:3;
+    background:linear-gradient(90deg,rgba(7,7,8,0) 0%,rgba(7,7,8,0.92) 55%,rgba(7,7,8,0.96) 100%);
+  }
   .nav-links a{white-space:nowrap;flex-shrink:0;font-size:0.875rem;padding:9px 14px}
   section,.cta-section{scroll-margin-top:140px}
 }
@@ -410,10 +412,43 @@ section{padding:110px 0;position:relative;z-index:2;scroll-margin-top:70px}
 .service .example b{color:var(--neon);font-weight:700}
 
 /* ---------- IDEAS POR NEGOCIO ---------- */
-.biz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+/* Cinta horizontal a lo ancho de la pantalla. La primera tarjeta alinea con
+   el borde del contenido (.wrap) y las demás asoman por la derecha, que es la
+   pista de que se puede deslizar. Con la rejilla de tres columnas cada
+   tarjeta medía ~500 px y la sección no cabía en una pantalla. */
+.biz-strip{
+  display:flex;gap:18px;align-items:stretch;
+  overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  margin:0 calc(50% - 50vw);
+  padding:14px max(28px,calc(50vw - 572px)) 30px;
+  scroll-padding-left:max(28px,calc(50vw - 572px));
+}
+.biz-strip::-webkit-scrollbar{display:none}
+.strip-nav{display:flex;justify-content:flex-end;gap:10px;margin:-28px 0 4px}
+.strip-btn{
+  width:44px;height:44px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--line);background:rgba(255,255,255,0.04);color:var(--text);
+  font-size:1.6rem;line-height:1;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;padding:0 0 3px;
+  transition:background .2s ease,border-color .2s ease,color .2s ease;
+}
+@media(hover:hover) and (pointer:fine){
+  .strip-btn:hover{background:var(--neon);border-color:var(--neon);color:var(--void)}
+}
 .biz{
+  flex:0 0 340px;scroll-snap-align:start;
   border-radius:22px;
-  padding:36px 30px;transition:transform .35s ease,box-shadow .35s ease;
+  padding:0 22px 22px;transition:transform .35s ease,box-shadow .35s ease;
+}
+/* La tarjeta que encabeza la cinta se "enciende": su primera fila de datos
+   se marca en cian, igual que al pasar el cursor. */
+.biz.is-active .biz-preview .pv-row:first-child{background:rgba(43,240,228,0.12)}
+.biz.is-active .demo-hint{text-shadow:0 0 12px rgba(43,240,228,0.8)}
+@media(max-width:640px){
+  .biz{flex-basis:min(82vw,330px)}
+  .strip-nav{margin-top:-20px}
 }
 @media(hover:hover) and (pointer:fine){
   .biz:hover{
@@ -421,23 +456,23 @@ section{padding:110px 0;position:relative;z-index:2;scroll-margin-top:70px}
     box-shadow:0 24px 60px rgba(0,0,0,0.5),inset 0 1px 1px rgba(43,240,228,0.3);
   }
 }
-.biz .biz-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
-.biz .biz-icon{font-size:1.9rem}
-.biz h3{font-size:1.34rem;font-weight:600;line-height:1.25}
+.biz .biz-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.biz .biz-icon{font-size:1.6rem}
+.biz h3{font-size:1.15rem;font-weight:600;line-height:1.25}
 .biz ul{list-style:none}
 .biz li{
-  padding:11px 0 11px 26px;position:relative;
-  font-size:1rem;color:var(--muted);line-height:1.5;
+  padding:8px 0 8px 22px;position:relative;
+  font-size:0.95rem;color:var(--muted);line-height:1.45;
   border-bottom:1px solid rgba(255,255,255,0.08);
 }
 .biz li:last-child{border-bottom:none}
 .biz li::before{
-  content:"◆";position:absolute;left:0;top:10px;
-  color:var(--pink);font-size:0.65rem;
+  content:"◆";position:absolute;left:0;top:9px;
+  color:var(--pink);font-size:0.6rem;
 }
 .biz{cursor:pointer}
 .biz .demo-hint{
-  margin-top:20px;display:inline-flex;align-items:center;gap:8px;
+  margin-top:14px;display:inline-flex;align-items:center;gap:8px;
   font-family:'Space Mono',monospace;font-size:0.9rem;text-transform:uppercase;
   letter-spacing:0.1em;color:var(--neon);
 }
@@ -498,7 +533,7 @@ section{padding:110px 0;position:relative;z-index:2;scroll-margin-top:70px}
    scroll para cinco frases). Ahora caben en una. */
 .cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
 .case{border-radius:22px;padding:30px 28px;display:flex;flex-direction:column;gap:12px}
-.case-num{font-family:"Space Mono",monospace;font-size:.82rem;color:var(--neon);letter-spacing:.1em}
+.case-num{font-family:"Space Mono",monospace;font-size:.875rem;color:var(--neon);letter-spacing:.1em}
 .case h3{font-size:1.18rem;font-weight:600;line-height:1.3}
 .case p{color:var(--muted);font-size:1rem;line-height:1.6;flex:1}
 .case .tag{align-self:flex-start;color:var(--pink)}
@@ -1064,22 +1099,21 @@ footer .footer-inner a{display:inline-block;padding:8px 2px}
 /* ---------- VISTA PREVIA EN LAS TARJETAS DE DEMO ----------
    Una mini pantalla del sistema encima del texto: se entiende de un vistazo
    que la tarjeta abre algo que se puede usar, no un folleto. */
-.biz{padding-top:0}
 .biz-preview{
-  margin:0 -30px 22px;border-bottom:1px solid var(--line);
+  margin:0 -22px 16px;border-bottom:1px solid var(--line);
   background:#0B0B0E;display:flex;flex-direction:column;pointer-events:none;
 }
 .biz-preview .pv-top{
   display:flex;align-items:center;gap:8px;padding:11px 16px;
-  background:linear-gradient(120deg,#1C1C21,#2A2A31);font-size:.82rem;font-weight:700;color:#fff;
+  background:linear-gradient(120deg,#1C1C21,#2A2A31);font-size:.875rem;font-weight:700;color:#fff;
 }
 .biz-preview .pv-top i{font-style:normal;font-size:1rem}
 .biz-preview .pv-dots{margin-left:auto;display:flex;gap:4px}
 .biz-preview .pv-dots b{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);display:block}
 .biz-preview .pv-body{padding:10px 16px 12px;display:flex;flex-direction:column;gap:6px}
 .biz-preview .pv-row{
-  height:26px;border-radius:7px;background:rgba(255,255,255,0.06);
-  display:flex;align-items:center;padding:0 10px;font-size:.78rem;color:rgba(242,242,240,.8);
+  height:28px;border-radius:7px;background:rgba(255,255,255,0.06);
+  display:flex;align-items:center;padding:0 10px;font-size:.875rem;color:rgba(242,242,240,.85);
 }
-.biz-preview .pv-row i{font-style:normal;margin-left:auto;color:var(--neon);font-weight:700;font-size:.74rem}
+.biz-preview .pv-row i{font-style:normal;margin-left:auto;color:var(--neon);font-weight:700;font-size:.8rem}
 @media(hover:hover) and (pointer:fine){.biz:hover .biz-preview .pv-row:first-child{background:rgba(43,240,228,0.12)}}

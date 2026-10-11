@@ -444,7 +444,27 @@ function updateSpy(){
   const y = scrollY + innerHeight*0.4;
   let current = "";
   for(const s of spySections){ if(s.el.offsetTop <= y) current = s.id; }
-  spyLinks.forEach(a=>a.classList.toggle("active", a.getAttribute("href")==="#"+current));
+  let activo = null;
+  spyLinks.forEach(a=>{
+    const on = a.getAttribute("href")==="#"+current;
+    a.classList.toggle("active", on);
+    if(on) activo = a;
+  });
+  revealActiveLink(activo);
+}
+/* En móvil la tira de secciones se desliza: cuando cambia la sección activa,
+   el enlace se trae a la vista dentro de la tira (nunca mueve la página). */
+let lastSpy = null;
+function revealActiveLink(a){
+  if(!a || a===lastSpy) return;
+  lastSpy = a;
+  const scroller = a.closest(".nav-scroll");
+  if(!scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+  const left = a.offsetLeft - 12;
+  const visibleFrom = scroller.scrollLeft, visibleTo = scroller.scrollLeft + scroller.clientWidth - 48;
+  if(a.offsetLeft < visibleFrom || a.offsetLeft + a.offsetWidth > visibleTo){
+    scroller.scrollTo({left:Math.max(0,left), behavior: reduced ? "auto" : "smooth"});
+  }
 }
 addEventListener("scroll",updateSpy,{passive:true});
 addEventListener("resize",updateSpy);
@@ -577,6 +597,54 @@ document.querySelectorAll(".biz").forEach(card=>{
     card.prepend(pv);
   }
 });
+/* ---------- CINTA DE DEMOS: flechas, tarjeta activa y avance automático ---------- */
+(function initBizStrip(){
+  const strip = document.getElementById("bizStrip");
+  if(!strip) return;
+  const cards = [...strip.querySelectorAll(".biz")];
+  if(cards.length < 2) return;
+  const prev = document.querySelector(".strip-btn.prev");
+  const next = document.querySelector(".strip-btn.next");
+  const paso = () => cards[1].offsetLeft - cards[0].offsetLeft;
+  let manual = false, timer = null, autoScrolling = false, autoT = null;
+
+  function go(dir){
+    const max = strip.scrollWidth - strip.clientWidth;
+    let left = strip.scrollLeft + dir*paso();
+    if(dir > 0 && strip.scrollLeft >= max - 4) left = 0;     /* al final, vuelve al inicio */
+    if(dir < 0 && strip.scrollLeft <= 4) left = max;
+    autoScrolling = true;
+    clearTimeout(autoT); autoT = setTimeout(()=>{ autoScrolling = false; }, 900);
+    strip.scrollTo({left, behavior: reduced ? "auto" : "smooth"});
+  }
+  if(prev) prev.addEventListener("click",()=>{ manual = true; stop(); go(-1); });
+  if(next) next.addEventListener("click",()=>{ manual = true; stop(); go(1); });
+
+  /* Tarjeta activa: la primera que se ve completa */
+  const io = new IntersectionObserver(entries=>{
+    entries.forEach(e=>e.target.classList.toggle("is-visible", e.intersectionRatio >= 0.9));
+    const first = cards.find(c=>c.classList.contains("is-visible"));
+    cards.forEach(c=>c.classList.toggle("is-active", c === first));
+  },{root:strip, threshold:[0.9]});
+  cards.forEach(c=>io.observe(c));
+
+  /* Avance automático solo en escritorio y solo mientras la cinta está a la
+     vista; se detiene para siempre en cuanto la persona la mueve por su
+     cuenta (rueda, dedo o flechas) y se pausa mientras el cursor está encima. */
+  function start(){ stop(); timer = setInterval(()=>{ if(!manual) go(1); }, 4500); }
+  function stop(){ if(timer){ clearInterval(timer); timer = null; } }
+  if(reduced || !matchMedia("(hover:hover)").matches) return;
+  strip.addEventListener("scroll",()=>{ if(!autoScrolling){ manual = true; stop(); } },{passive:true});
+  strip.addEventListener("pointerdown",()=>{ manual = true; stop(); },{passive:true});
+  strip.addEventListener("mouseenter",stop);
+  strip.addEventListener("mouseleave",()=>{ if(!manual && enVista) start(); });
+  let enVista = false;
+  new IntersectionObserver(entries=>{
+    enVista = entries[0].isIntersecting;
+    if(enVista && !manual && !strip.matches(":hover")) start(); else stop();
+  },{threshold:0.35}).observe(strip);
+})();
+
 document.querySelectorAll(".biz").forEach(card=>{
   card.addEventListener("click",()=>openDemo(card.dataset.demo, card));
   card.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openDemo(card.dataset.demo, card); } });

@@ -83,13 +83,18 @@
 <nav>
   <div class="nav-inner">
     <a class="logo liquid-glass" href="#inicio">Rod<span>Tech</span></a>
+    <!-- La píldora (.nav-links) no hace scroll: lo hace .nav-scroll por dentro.
+         Así el degradado que avisa "sigue a la derecha" se pinta sobre la
+         píldora quieta y no se lleva su fondo ni su borde. -->
     <div class="nav-links liquid-glass" id="navLinks">
-      <a href="#servicios">Servicios</a>
-      <a href="#ideas">Demos</a>
-      <a href="#proceso">Proceso</a>
-      <a href="#problemas">Casos</a>
-      <a href="#nosotros">Nosotros</a>
-      <a href="#faq">Preguntas</a>
+      <div class="nav-scroll">
+        <a href="#servicios">Servicios</a>
+        <a href="#ideas">Demos</a>
+        <a href="#proceso">Proceso</a>
+        <a href="#problemas">Casos</a>
+        <a href="#nosotros">Nosotros</a>
+        <a href="#faq">Preguntas</a>
+      </div>
     </div>
     <a class="nav-cta" href="#contacto">Agenda una llamada
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
@@ -220,7 +225,14 @@
       </div>
       <p class="side">Haz clic en tu giro y prueba una mini-app real, funcionando en tu pantalla.</p>
     </div>
-    <div class="biz-grid">
+    <!-- Cinta horizontal: se desliza con el dedo, la rueda o las flechas, y en
+         escritorio avanza sola hasta que la persona la toca. Las tarjetas las
+         completa app.js con la mini pantalla de cada sistema. -->
+    <div class="strip-nav" aria-label="Recorrer los demos">
+      <button class="strip-btn prev" type="button" aria-label="Demo anterior">‹</button>
+      <button class="strip-btn next" type="button" aria-label="Siguiente demo">›</button>
+    </div>
+    <div class="biz-strip" id="bizStrip">
       <div class="biz liquid-glass" role="button" tabindex="0" data-demo="restaurante">
         <div class="biz-head"><span class="biz-icon">🍽️</span><h3>Restaurantes y cafeterías</h3></div>
         <ul>
