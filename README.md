@@ -3,7 +3,7 @@
 Sitio de **RodTech**: tecnología a la medida para negocios — automatización, sistemas
 personalizados, apps, tiendas en línea, integraciones y paneles de control.
 
-Fundador: Rodolfo David Bautista Reyes · WhatsApp [+52 953 134 2851](https://wa.me/529531342851)
+Contacto: WhatsApp [+52 953 134 2851](https://wa.me/529531342851)
 
 ## Estructura
 
