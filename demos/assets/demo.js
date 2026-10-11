@@ -37,11 +37,74 @@ function chart(datos) {
     </div>`).join("")}</div>`;
 }
 
+
+/* --------------------------------------------------------------------------
+   Formularios: panel lateral que se abre para crear algo nuevo
+   -------------------------------------------------------------------------- */
+function campo(label, inner, hint){
+  return `<div class="fc"><span>${esc(label)}</span>${inner}${hint?`<small>${esc(hint)}</small>`:""}</div>`;
+}
+function opciones(lista, actual){
+  return lista.map(v=>{const [val,txt]=Array.isArray(v)?v:[v,v];return `<option value="${esc(val)}"${val==actual?" selected":""}>${esc(txt)}</option>`;}).join("");
+}
+/* drawer(titulo, html, onSubmit(datos, cerrar)) -> abre el panel; onSubmit
+   recibe los valores del formulario por name. Devuelve false para no cerrar. */
+function drawer(titulo, html, onSubmit, opts){
+  opts=opts||{};
+  const ov=document.createElement("div");ov.className="drawer-ov";
+  ov.innerHTML=`<aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(titulo)}">
+      <div class="drawer-h"><h2>${esc(titulo)}</h2><button class="btn sm" data-x type="button">Cerrar</button></div>
+      <form class="drawer-b" novalidate>${html}
+        <div class="drawer-f"><button class="btn" type="button" data-x>Cancelar</button>
+        <button class="btn primary" type="submit">${esc(opts.enviar||"Guardar")}</button></div></form></aside>`;
+  document.body.appendChild(ov);document.body.classList.add("drawer-open");
+  const form=ov.querySelector("form");
+  const cerrar=()=>{ov.remove();document.body.classList.remove("drawer-open");document.removeEventListener("keydown",esc1);};
+  const esc1=e=>{if(e.key==="Escape")cerrar();};
+  document.addEventListener("keydown",esc1);
+  ov.querySelectorAll("[data-x]").forEach(b=>b.onclick=cerrar);
+  ov.addEventListener("click",e=>{if(e.target===ov)cerrar();});
+  form.onsubmit=e=>{e.preventDefault();
+    const d={};new FormData(form).forEach((v,k)=>{d[k]=typeof v==="string"?v.trim():v;});
+    /* validacion nativa pero con mensaje propio */
+    const inv=[...form.querySelectorAll("[required]")].find(i=>!i.value.trim());
+    if(inv){inv.focus();inv.classList.add("inv");toast("Falta: "+(inv.closest(".fc")?.querySelector("span")?.textContent||inv.name),"⚠️");return;}
+    const r=onSubmit(d,form);if(r!==false)cerrar();};
+  const first=form.querySelector("input,select,textarea");if(first)first.focus();
+  return {cerrar,form};
+}
+
+/* --------------------------------------------------------------------------
+   Persistencia: lo que el prospecto haga sobrevive a una recarga.
+   DEMO.estado = { clave, get:()=>obj, set:(obj)=>void }
+   -------------------------------------------------------------------------- */
+function guardarEstado(DEMO){
+  if(!DEMO.estado)return;
+  try{localStorage.setItem("rt-demo-"+DEMO.estado.clave,JSON.stringify(DEMO.estado.get()));}catch(e){}
+}
+function cargarEstado(DEMO){
+  if(!DEMO.estado)return false;
+  try{const raw=localStorage.getItem("rt-demo-"+DEMO.estado.clave);if(!raw)return false;DEMO.estado.set(JSON.parse(raw));return true;}catch(e){return false;}
+}
+function reiniciarDemo(DEMO){
+  try{localStorage.removeItem("rt-demo-"+DEMO.estado.clave);}catch(e){}
+  location.reload();
+}
+
 /* --------------------------------------------------------------------------
    Arranque
    -------------------------------------------------------------------------- */
 function startDemo(DEMO) {
   document.title = DEMO.negocio + " — Demo RodTech";
+  const restaurado = cargarEstado(DEMO);
+  /* boton de reinicio en la cinta, solo si el demo guarda estado */
+  const strip = document.querySelector(".demo-strip");
+  if (DEMO.estado && strip) {
+    const b = document.createElement("button"); b.className = "strip-reset"; b.type = "button";
+    b.textContent = "↺ Reiniciar demo"; b.title = "Borra lo que hayas capturado y vuelve a los datos de ejemplo";
+    b.onclick = () => reiniciarDemo(DEMO);
+    strip.insertBefore(b, strip.querySelector("a"));
+  }
 
   const app = document.getElementById("app");
   const side = document.createElement("aside");
@@ -84,7 +147,11 @@ function startDemo(DEMO) {
 
   /* Las secciones llaman a esto tras cambiar datos; re-pinta sin perder
      en qué sección estabas. */
-  function refrescar() { pintar(); }
+  function refrescar() { guardarEstado(DEMO); pintar(); }
+  /* Las páginas pueden saltar a otra sección (p. ej. "Surtir" manda al punto de venta) */
+  DEMO.ir = id => { if (DEMO.secciones.some(s => s.id === id)) { actual = id; refrescar(); } };
 
   pintar();
+  if (restaurado) toast("Se restauró lo que capturaste la última vez","💾");
+  return refrescar;
 }

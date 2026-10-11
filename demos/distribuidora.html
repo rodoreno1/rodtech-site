@@ -16,7 +16,7 @@
 <div class="demo-strip">
   <b>Demostración</b>
   <span class="sep">·</span>
-  <span class="hide-sm">Portal de ejemplo para una distribuidora. Los datos son ficticios.</span>
+  <span class="hide-sm">Portal de ejemplo para una distribuidora. Levanta un pedido, revisa el crédito del cliente y síguelo hasta la entrega.</span>
   <a href="../index.html#ideas">← Volver a RodTech</a>
 </div>
 
@@ -25,41 +25,75 @@
 
 <script src="assets/demo.js"></script>
 <script>
-let clientes = [
-  {n:"Abarrotes Lupita",zona:"Centro",limite:50000,usado:18400,ultimo:"18 jul",nivel:"Mayorista"},
-  {n:"Tienda Don Chuy",zona:"Norte",limite:25000,usado:23800,ultimo:"29 jul",nivel:"Minorista"},
-  {n:"Mini Súper Ale",zona:"Sur",limite:40000,usado:9200,ultimo:"25 jul",nivel:"Mayorista"},
-  {n:"Cremería La Vaca",zona:"Centro",limite:30000,usado:4100,ultimo:"12 jul",nivel:"Minorista"},
-];
-let pedidos = [
-  {folio:"PED-3131",cliente:"Abarrotes Lupita",fecha:"hoy",total:6540,paso:1,ruta:"R-2",entrega:"mañana"},
-  {folio:"PED-3128",cliente:"Mini Súper Ale",fecha:"hoy",total:9280,paso:2,ruta:"R-1",entrega:"mañana"},
-  {folio:"PED-3120",cliente:"Tienda Don Chuy",fecha:"ayer",total:4310,paso:3,ruta:"R-2",entrega:"hoy"},
-  {folio:"PED-3098",cliente:"Cremería La Vaca",fecha:"18 jul",total:12750,paso:4,ruta:"R-3",entrega:"18 jul"},
-];
-let rutas = [
-  {id:"R-1",chofer:"Martín",unidad:"Nissan NP300",paradas:7,hechas:7,km:42},
-  {id:"R-2",chofer:"Kike",unidad:"Ford Transit",paradas:9,hechas:5,km:61},
-  {id:"R-3",chofer:"Lalo",unidad:"Nissan NP300",paradas:6,hechas:2,km:38},
-];
+let S = {
+  seq: 3132,
+  productos: [
+    {n:"Aceite 1 L (caja 12)",p:398},{n:"Arroz 1 kg (bulto 10)",p:265},{n:"Azúcar 1 kg (bulto 10)",p:310},
+    {n:"Refresco 600 ml (paquete 24)",p:336},{n:"Papel higiénico (paca 32)",p:289},{n:"Detergente 1 kg (caja 10)",p:420},
+    {n:"Leche 1 L (caja 12)",p:312},{n:"Galletas surtidas (caja 24)",p:276},
+  ],
+  clientes: [
+    {n:"Abarrotes Lupita",zona:"Centro",limite:50000,usado:18400,ultimo:"hoy",nivel:"Mayorista"},
+    {n:"Tienda Don Chuy",zona:"Norte",limite:25000,usado:23800,ultimo:"ayer",nivel:"Minorista"},
+    {n:"Mini Súper Ale",zona:"Sur",limite:40000,usado:9200,ultimo:"hoy",nivel:"Mayorista"},
+    {n:"Cremería La Vaca",zona:"Centro",limite:30000,usado:4100,ultimo:"18 jul",nivel:"Minorista"},
+  ],
+  pedidos: [
+    {folio:"PED-3131",cliente:"Abarrotes Lupita",fecha:"hoy",items:{"Aceite 1 L (caja 12)":6,"Refresco 600 ml (paquete 24)":12},paso:1,ruta:"R-2",entrega:"mañana"},
+    {folio:"PED-3128",cliente:"Mini Súper Ale",fecha:"hoy",items:{"Arroz 1 kg (bulto 10)":20,"Azúcar 1 kg (bulto 10)":10,"Leche 1 L (caja 12)":3},paso:2,ruta:"R-3",entrega:"mañana"},
+    {folio:"PED-3120",cliente:"Tienda Don Chuy",fecha:"ayer",items:{"Papel higiénico (paca 32)":10,"Detergente 1 kg (caja 10)":3},paso:3,ruta:"R-1",entrega:"hoy"},
+    {folio:"PED-3098",cliente:"Cremería La Vaca",fecha:"18 jul",items:{"Leche 1 L (caja 12)":30,"Galletas surtidas (caja 24)":12},paso:4,ruta:"R-2",entrega:"18 jul"},
+  ],
+  rutas: [
+    {id:"R-1",zona:"Norte", chofer:"Martín",unidad:"Nissan NP300",paradas:7,hechas:6,km:42},
+    {id:"R-2",zona:"Centro",chofer:"Kike",unidad:"Ford Transit",paradas:9,hechas:5,km:61},
+    {id:"R-3",zona:"Sur",   chofer:"Lalo",unidad:"Nissan NP300",paradas:6,hechas:2,km:38},
+  ],
+};
 const PASOS = ["Recibido","En preparación","En ruta","Entregado"];
+const prod = n => S.productos.find(p=>p.n===n);
+const totalDe = items => Object.entries(items).reduce((s,[n,q])=>s+(prod(n)?prod(n).p:0)*q,0);
+const cli = n => S.clientes.find(c=>c.n===n);
 const disponible = c => c.limite - c.usado;
-const enRiesgo = () => clientes.filter(c=>disponible(c)/c.limite < 0.15);
-const activos = () => pedidos.filter(p=>p.paso<4);
+const enRiesgo = () => S.clientes.filter(c=>disponible(c)/c.limite < 0.15);
+const activos = () => S.pedidos.filter(p=>p.paso<4);
+const rutaDe = zona => S.rutas.find(r=>r.zona===zona) || S.rutas[0];
+const vendidoHoy = () => S.pedidos.filter(p=>p.fecha==="hoy").reduce((s,p)=>s+totalDe(p.items),0);
 
-startDemo({
+function nuevoPedido(refrescar, clientePre){
+  drawer("Nuevo pedido",`
+    ${campo("Cliente",`<select name="cli">${opciones(S.clientes.map(c=>c.n),clientePre)}</select>`,"El sistema revisa su crédito disponible antes de aceptar")}
+    ${campo("Productos",`<div class="pick">${S.productos.map((p,i)=>`
+      <label><input type="checkbox" name="it_${i}" value="1"><b>${esc(p.n)}</b><span>${money(p.p)}</span>
+      <input type="number" name="q_${i}" value="1" min="1" max="500"></label>`).join("")}</div>`)}
+    ${campo("Entrega",`<select name="ent">${opciones(["mañana","hoy (urgente)","pasado mañana"])}</select>`)}`,
+    d=>{
+      const items={}; S.productos.forEach((p,i)=>{ if(d["it_"+i]) items[p.n]=Math.max(1,parseInt(d["q_"+i]||"1",10)); });
+      if(!Object.keys(items).length){ toast("Marca al menos un producto","⚠️"); return false; }
+      const c=cli(d.cli), total=totalDe(items);
+      if(total>disponible(c)){ toast(c.n+" solo tiene "+money(disponible(c))+" de crédito disponible; el pedido es de "+money(total)+". Registra un pago o amplía su línea.","💳"); return false; }
+      const r=rutaDe(c.zona);
+      const p={folio:"PED-"+(S.seq++),cliente:c.n,fecha:"hoy",items,paso:1,ruta:r.id,entrega:d.ent};
+      S.pedidos.unshift(p); c.usado+=total; c.ultimo="hoy"; r.paradas++;
+      toast(p.folio+" levantado · "+money(total)+" · asignado a ruta "+r.id+" ("+r.chofer+")","📦"); refrescar();
+    },{enviar:"Levantar pedido"});
+}
+
+const DEMO = {
   negocio:"Distribuidora del Centro", rubro:"Abarrotes al mayoreo", emoji:"🚚",
+  estado:{clave:"distribuidora", get:()=>S, set:o=>{S=o;}},
   secciones:[
     {
       id:"panel", nombre:"Panel", ic:"📊",
       titulo:"Operación del día", sub:"Pedidos, rutas y crédito en una sola pantalla",
+      accion:{txt:"+ Nuevo pedido", fn:nuevoPedido},
       render(root){
         root.innerHTML = `
           <div class="kpis">
-            <div class="kpi"><div class="lbl">Pedidos activos</div><div class="val">${activos().length}</div><div class="delta flat">${money(activos().reduce((s,p)=>s+p.total,0))} en tránsito</div></div>
-            <div class="kpi"><div class="lbl">Vendido hoy</div><div class="val">${money(pedidos.filter(p=>p.fecha==="hoy").reduce((s,p)=>s+p.total,0))}</div><div class="delta up">▲ 18% vs. ayer</div></div>
-            <div class="kpi"><div class="lbl">Crédito colocado</div><div class="val">${money(clientes.reduce((s,c)=>s+c.usado,0))}</div><div class="delta flat">de ${money(clientes.reduce((s,c)=>s+c.limite,0))}</div></div>
-            <div class="kpi"><div class="lbl">Entregas del día</div><div class="val">${rutas.reduce((s,r)=>s+r.hechas,0)}/${rutas.reduce((s,r)=>s+r.paradas,0)}</div><div class="delta up">a tiempo</div></div>
+            <div class="kpi"><div class="lbl">Pedidos activos</div><div class="val">${activos().length}</div><div class="delta flat">${money(activos().reduce((s,p)=>s+totalDe(p.items),0))} en tránsito</div></div>
+            <div class="kpi"><div class="lbl">Vendido hoy</div><div class="val">${money(vendidoHoy())}</div><div class="delta flat">${S.pedidos.filter(p=>p.fecha==="hoy").length} pedidos</div></div>
+            <div class="kpi"><div class="lbl">Crédito colocado</div><div class="val">${money(S.clientes.reduce((s,c)=>s+c.usado,0))}</div><div class="delta flat">de ${money(S.clientes.reduce((s,c)=>s+c.limite,0))}</div></div>
+            <div class="kpi"><div class="lbl">Entregas del día</div><div class="val">${S.rutas.reduce((s,r)=>s+r.hechas,0)}/${S.rutas.reduce((s,r)=>s+r.paradas,0)}</div><div class="delta flat">paradas completadas</div></div>
           </div>
           ${enRiesgo().length?`<div class="note warn"><span class="ic">💳</span><div>
             <b>${enRiesgo().length} cliente(s) cerca de su límite de crédito</b>
@@ -69,17 +103,17 @@ startDemo({
               <div class="panel-h"><h2>Pedidos en curso</h2></div>
               <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
                 <thead><tr><th>Folio</th><th>Cliente</th><th>Estado</th><th class="num">Total</th></tr></thead>
-                <tbody>${pedidos.map(p=>`
+                <tbody>${S.pedidos.map(p=>`
                   <tr><td class="strong">${esc(p.folio)}</td>
                     <td>${esc(p.cliente)}<br><span style="color:var(--ink-3);font-size:.82rem">Ruta ${esc(p.ruta)} · ${esc(p.entrega)}</span></td>
                     <td><span class="tag ${p.paso===4?"ok":p.paso===3?"info":"warn"}">${PASOS[p.paso-1]}</span></td>
-                    <td class="num strong">${money(p.total)}</td></tr>`).join("")}</tbody>
+                    <td class="num strong">${money(totalDe(p.items))}</td></tr>`).join("")}</tbody>
               </table></div></div>
             </div>
             <div class="panel">
               <div class="panel-h"><h2>Ventas por semana</h2></div>
               <div class="panel-b">${chart([
-                {k:"S-4",v:78000},{k:"S-3",v:84000},{k:"S-2",v:91000},{k:"S-1",v:88000},{k:"Esta",v:96000,hi:true}])}</div>
+                {k:"S-4",v:78000},{k:"S-3",v:84000},{k:"S-2",v:91000},{k:"S-1",v:88000},{k:"Esta",v:76000+vendidoHoy(),hi:true}])}</div>
             </div>
           </div>`;
       }
@@ -88,30 +122,46 @@ startDemo({
       id:"clientes", nombre:"Clientes", ic:"🏪",
       titulo:"Cartera de clientes", sub:"Cada uno con su nivel de precio y su línea de crédito",
       badge:()=>enRiesgo().length||"",
+      accion:{txt:"+ Nuevo cliente", fn:(refrescar)=>drawer("Nuevo cliente",`
+          ${campo("Nombre del negocio",`<input name="n" required placeholder="Abarrotes La Esquina">`)}
+          <div class="fc-row">${campo("Zona",`<select name="zona">${opciones(["Centro","Norte","Sur"])}</select>`)}
+          ${campo("Nivel de precio",`<select name="nivel">${opciones(["Minorista","Mayorista"])}</select>`)}</div>
+          ${campo("Línea de crédito",`<input name="lim" type="number" min="0" step="1000" value="15000">`,"Puedes dejarla en 0 para venta de contado")}`,
+        d=>{S.clientes.push({n:d.n,zona:d.zona,limite:+d.lim,usado:0,ultimo:"—",nivel:d.nivel});toast(d.n+" dado de alta en zona "+d.zona,"✅");refrescar();})},
       render(root, refrescar){
         root.innerHTML = `
           <div class="panel">
             <div class="panel-h"><h2>Clientes activos</h2><span class="sub">Corte el día 30</span></div>
             <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
               <thead><tr><th>Cliente</th><th>Zona</th><th>Nivel</th><th style="width:190px">Crédito usado</th><th class="num">Disponible</th><th></th></tr></thead>
-              <tbody>${clientes.map((c,i)=>`
+              <tbody>${S.clientes.map((c,i)=>`
                 <tr>
                   <td><div class="cellmain"><div class="em">🏪</div>
                     <div><b>${esc(c.n)}</b><span>Último pedido: ${esc(c.ultimo)}</span></div></div></td>
                   <td style="color:var(--ink-3)">${esc(c.zona)}</td>
                   <td><span class="tag ${c.nivel==="Mayorista"?"neutral":"info"}">${esc(c.nivel)}</span></td>
-                  <td>${bar(c.usado/c.limite)}
+                  <td>${bar(c.limite?c.usado/c.limite:0)}
                     <span style="font-size:.8rem;color:var(--ink-3)">${money(c.usado)} de ${money(c.limite)}</span></td>
-                  <td class="num strong" style="color:${disponible(c)/c.limite<0.15?"var(--bad)":"inherit"}">${money(disponible(c))}</td>
-                  <td class="num">${disponible(c)/c.limite<0.15
-                    ? `<button class="btn sm" data-amp="${i}">Ampliar línea</button>`:""}</td>
+                  <td class="num strong" style="color:${c.limite&&disponible(c)/c.limite<0.15?"var(--bad)":"inherit"}">${money(disponible(c))}</td>
+                  <td class="num"><div class="actions" style="justify-content:flex-end">
+                    <button class="btn sm primary" data-ped="${i}">Pedido</button>
+                    ${c.usado?`<button class="btn sm" data-pago="${i}">Registrar pago</button>`:""}
+                    ${c.limite&&disponible(c)/c.limite<0.15?`<button class="btn sm" data-amp="${i}">Ampliar línea</button>`:""}</div></td>
                 </tr>`).join("")}</tbody>
             </table></div></div>
           </div>`;
+        root.querySelectorAll("[data-ped]").forEach(b=>b.onclick=()=>nuevoPedido(refrescar,S.clientes[+b.dataset.ped].n));
+        root.querySelectorAll("[data-pago]").forEach(b=>b.onclick=()=>{
+          const c=S.clientes[+b.dataset.pago];
+          drawer("Pago de "+c.n,`<p style="font-size:.9rem;color:var(--ink-2)">Saldo actual: <b>${money(c.usado)}</b></p>
+            <div class="fc-row">${campo("Monto",`<input name="m" type="number" min="1" max="${c.usado}" value="${c.usado}" required>`)}
+            ${campo("Forma",`<select name="f">${opciones(["Transferencia","Efectivo al chofer","Depósito"])}</select>`)}</div>`,
+            d=>{const m=Math.min(c.usado,+d.m); c.usado-=m; toast("Pago de "+money(m)+" aplicado a "+c.n+" · disponible "+money(disponible(c)),"💵"); refrescar();},{enviar:"Aplicar pago"});
+        });
         root.querySelectorAll("[data-amp]").forEach(b=>b.onclick=()=>{
-          const c = clientes[+b.dataset.amp];
+          const c = S.clientes[+b.dataset.amp];
           c.limite = Math.round(c.limite*1.4/1000)*1000;
-          toast("Línea de "+esc(c.n)+" ampliada a "+money(c.limite),"💳");
+          toast("Línea de "+c.n+" ampliada a "+money(c.limite),"💳");
           refrescar();
         });
       }
@@ -119,16 +169,18 @@ startDemo({
     {
       id:"pedidos", nombre:"Pedidos", ic:"📦",
       titulo:"Seguimiento de pedidos", sub:"Tus clientes ven este mismo avance desde su celular",
+      badge:()=>activos().length||"",
+      accion:{txt:"+ Nuevo pedido", fn:nuevoPedido},
       render(root, refrescar){
-        root.innerHTML = pedidos.map(p=>`
+        root.innerHTML = S.pedidos.map(p=>`
           <div class="panel">
             <div class="panel-h">
               <h2>${esc(p.folio)}</h2>
               <span class="sub">${esc(p.cliente)} · ruta ${esc(p.ruta)} · entrega ${esc(p.entrega)}</span>
               <div class="right">
                 <span class="tag ${p.paso===4?"ok":"info"}">${PASOS[p.paso-1]}</span>
-                <b>${money(p.total)}</b>
-                ${p.paso<4?`<button class="btn sm primary" data-av="${esc(p.folio)}">Avanzar</button>`:""}
+                <b>${money(totalDe(p.items))}</b>
+                ${p.paso<4?`<button class="btn sm primary" data-av="${esc(p.folio)}">${p.paso===3?"Marcar entregado":"Avanzar"}</button>`:""}
               </div>
             </div>
             <div class="panel-b">
@@ -137,11 +189,13 @@ startDemo({
                   <div class="tl-d">${i<p.paso-1?"✓":i===p.paso-1?"●":""}</div>
                   <div><b>${s}</b>${i===p.paso-1?"<span>ahora</span>":""}</div>
                 </div>`).join("")}</div>
+              <p style="font-size:.86rem;color:var(--ink-3);margin-top:12px">${Object.entries(p.items).map(([n,q])=>q+"× "+esc(n)).join(" · ")}</p>
             </div>
           </div>`).join("");
         root.querySelectorAll("[data-av]").forEach(b=>b.onclick=()=>{
-          const p = pedidos.find(x=>x.folio===b.dataset.av);
+          const p = S.pedidos.find(x=>x.folio===b.dataset.av);
           p.paso++;
+          if(p.paso===4){ const r=S.rutas.find(r=>r.id===p.ruta); if(r&&r.hechas<r.paradas) r.hechas++; }
           toast(p.folio+" → "+PASOS[p.paso-1]+" · aviso enviado al cliente","📲");
           refrescar();
         });
@@ -153,25 +207,25 @@ startDemo({
       render(root){
         root.innerHTML = `
           <div class="kpis">
-            ${rutas.map(r=>`
+            ${S.rutas.map(r=>`
               <div class="kpi">
-                <div class="lbl">Ruta ${esc(r.id)} · ${esc(r.chofer)}</div>
+                <div class="lbl">Ruta ${esc(r.id)} · ${esc(r.zona)} · ${esc(r.chofer)}</div>
                 <div class="val">${r.hechas}/${r.paradas}</div>
                 <div class="delta ${r.hechas===r.paradas?"up":"flat"}">${r.hechas===r.paradas?"ruta completa":"en curso"} · ${r.km} km</div>
                 <div style="margin-top:10px">${bar(r.hechas/r.paradas)}</div>
               </div>`).join("")}
           </div>
           <div class="panel">
-            <div class="panel-h"><h2>Detalle por unidad</h2></div>
+            <div class="panel-h"><h2>Paradas por unidad</h2><span class="sub">Los pedidos nuevos se asignan a la ruta de su zona</span></div>
             <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
-              <thead><tr><th>Ruta</th><th>Chofer</th><th>Unidad</th><th class="num">Paradas</th><th class="num">Entregadas</th><th class="num">Kilómetros</th></tr></thead>
-              <tbody>${rutas.map(r=>`
+              <thead><tr><th>Ruta</th><th>Chofer</th><th>Unidad</th><th>Pedidos en la ruta</th><th class="num">Entregadas</th><th class="num">Kilómetros</th></tr></thead>
+              <tbody>${S.rutas.map(r=>`
                 <tr>
                   <td><span class="tag neutral">${esc(r.id)}</span></td>
                   <td><b>${esc(r.chofer)}</b></td>
                   <td style="color:var(--ink-3)">${esc(r.unidad)}</td>
-                  <td class="num">${r.paradas}</td>
-                  <td class="num strong">${r.hechas}</td>
+                  <td style="font-size:.86rem">${S.pedidos.filter(p=>p.ruta===r.id&&p.paso<4).map(p=>esc(p.folio)+" · "+esc(p.cliente)).join("<br>")||"<span style='color:var(--ink-3)'>sin pendientes</span>"}</td>
+                  <td class="num strong">${r.hechas}/${r.paradas}</td>
                   <td class="num">${r.km} km</td>
                 </tr>`).join("")}</tbody>
             </table></div></div>
@@ -179,7 +233,8 @@ startDemo({
       }
     }
   ]
-});
+};
+startDemo(DEMO);
 </script>
 </body>
 </html>

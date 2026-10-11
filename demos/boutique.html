@@ -16,7 +16,7 @@
 <div class="demo-strip">
   <b>Demostración</b>
   <span class="sep">·</span>
-  <span class="hide-sm">Sistema de ejemplo para una boutique. Los datos son ficticios.</span>
+  <span class="hide-sm">Sistema de ejemplo para una boutique. Vende o aparta una prenda por talla y mira cómo se actualiza el catálogo.</span>
   <a href="../index.html#ideas">← Volver a RodTech</a>
 </div>
 
@@ -25,46 +25,84 @@
 
 <script src="assets/demo.js"></script>
 <script>
-let prendas = [
-  {e:"👗",n:"Vestido floral",p:549,tallas:{CH:1,M:2,G:0},vistas:214,online:true},
-  {e:"🧥",n:"Chamarra de mezclilla",p:729,tallas:{M:3,G:1,XL:1},vistas:186,online:true},
-  {e:"👚",n:"Blusa de lino",p:389,tallas:{CH:1,M:1},vistas:143,online:true},
-  {e:"👜",n:"Bolsa artesanal",p:459,tallas:{"Única":1},vistas:298,online:true},
-  {e:"👠",n:"Zapatilla nude",p:679,tallas:{"23":1,"24":2,"25":0},vistas:97,online:false},
-];
-let apartados = [
-  {folio:"A-217",cliente:"Mariana Cruz",tel:"953 114 5520",prendas:["Vestido floral · M"],total:549,plan:3,pagado:1,vence:"14 ago"},
-  {folio:"A-215",cliente:"Rocío Jiménez",tel:"953 127 8841",prendas:["Chamarra de mezclilla · G","Blusa de lino · CH"],total:1118,plan:2,pagado:1,vence:"09 ago"},
-  {folio:"A-212",cliente:"Fer Ramos",tel:"953 133 0092",prendas:["Bolsa artesanal · Única"],total:459,plan:1,pagado:1,vence:"—"},
-];
+let S = {
+  seq: 218, seqV: 91, ventasMes: 34180,
+  prendas: [
+    {e:"👗",n:"Vestido floral",p:549,tallas:{CH:1,M:2,G:0},vistas:214,online:true},
+    {e:"🧥",n:"Chamarra de mezclilla",p:729,tallas:{M:3,G:1,XL:1},vistas:186,online:true},
+    {e:"👚",n:"Blusa de lino",p:389,tallas:{CH:1,M:1},vistas:143,online:true},
+    {e:"👜",n:"Bolsa artesanal",p:459,tallas:{"Única":1},vistas:298,online:true},
+    {e:"👠",n:"Zapatilla nude",p:679,tallas:{"23":1,"24":2,"25":0},vistas:97,online:false},
+  ],
+  apartados: [
+    {folio:"A-217",cliente:"Mariana Cruz",tel:"953 114 5520",prendas:["Vestido floral · M"],total:549,plan:3,pagado:1,vence:"14 ago",entregado:false},
+    {folio:"A-215",cliente:"Rocío Jiménez",tel:"953 127 8841",prendas:["Chamarra de mezclilla · G","Blusa de lino · CH"],total:1118,plan:2,pagado:1,vence:"09 ago",entregado:false},
+    {folio:"A-212",cliente:"Fer Ramos",tel:"953 133 0092",prendas:["Bolsa artesanal · Única"],total:459,plan:1,pagado:1,vence:"—",entregado:true},
+  ],
+  ventas: [
+    {folio:"V-90",hora:"11:20",cliente:"Mostrador",prendas:["Blusa de lino · M"],total:389,canal:"Local"},
+  ],
+};
 const stock = p => Object.values(p.tallas).reduce((a,b)=>a+b,0);
-const agotadas = () => prendas.filter(p=>stock(p)===0);
-const ultimas = () => prendas.filter(p=>stock(p)===1);
+const agotadas = () => S.prendas.filter(p=>stock(p)===0);
+const ultimas = () => S.prendas.filter(p=>stock(p)===1);
 const cuota = a => Math.ceil(a.total/a.plan);
-const pendientes = () => apartados.filter(a=>a.pagado < a.plan);
+const pendientes = () => S.apartados.filter(a=>a.pagado < a.plan);
+const porEntregar = () => S.apartados.filter(a=>a.pagado>=a.plan && !a.entregado);
+const ventasHoy = () => S.ventas.reduce((s,v)=>s+v.total,0);
+const hora = () => new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",hour12:false});
+const fechaMas = d => { const f=new Date(); f.setDate(f.getDate()+d); return f.toLocaleDateString("es-MX",{day:"2-digit",month:"short"}); };
 
-startDemo({
+function vender(refrescar, prendaPre){
+  const combos=[]; S.prendas.forEach(p=>Object.entries(p.tallas).forEach(([t,q])=>{ if(q>0) combos.push({p,t,q}); }));
+  drawer("Vender o apartar",`
+    ${campo("Prendas",`<div class="pick">${combos.map((c,i)=>`
+      <label><input type="checkbox" name="it_${i}" value="1"${prendaPre===c.p.n&&!combos.slice(0,i).some(x=>x.p.n===prendaPre)?" checked":""}><b>${c.p.e} ${esc(c.p.n)} · ${esc(c.t)}</b><span>${money(c.p.p)} · ${c.q} en existencia</span></label>`).join("")}</div>`,"Solo aparecen tallas con existencia")}
+    <div class="fc-row">${campo("Cliente",`<input name="cli" required placeholder="Nombre">`)}
+    ${campo("WhatsApp",`<input name="tel" placeholder="953 000 0000">`)}</div>
+    ${campo("Tipo de venta",`<select name="tipo">${opciones([["0","Venta de contado"],["2","Apartado en 2 pagos"],["3","Apartado en 3 pagos"],["4","Apartado en 4 pagos"]])}</select>`,"Los apartados mandan recordatorio por WhatsApp antes de cada pago")}
+    ${campo("Canal",`<select name="canal">${opciones(["Local","Tienda en línea"])}</select>`)}`,
+    d=>{
+      const sel=combos.filter((c,i)=>d["it_"+i]);
+      if(!sel.length){ toast("Marca al menos una prenda","⚠️"); return false; }
+      sel.forEach(c=>{ c.p.tallas[c.t]--; });
+      const total=sel.reduce((s,c)=>s+c.p.p,0), lista=sel.map(c=>c.p.n+" · "+c.t), plan=+d.tipo;
+      if(plan){ const a={folio:"A-"+(S.seq++),cliente:d.cli,tel:d.tel||"—",prendas:lista,total,plan,pagado:1,vence:fechaMas(15),entregado:false};
+        S.apartados.unshift(a); toast(a.folio+" apartado · primer pago "+money(cuota(a))+" · prendas reservadas","🏷️"); }
+      else { const v={folio:"V-"+(S.seqV++),hora:hora(),cliente:d.cli,prendas:lista,total,canal:d.canal}; S.ventas.unshift(v); toast(v.folio+" · "+money(total)+" cobrados · inventario actualizado","💵"); }
+      const ag=sel.filter(c=>c.p.tallas[c.t]===0);
+      if(ag.length) setTimeout(()=>toast("Se agotó: "+ag.map(c=>c.p.n+" "+c.t).join(", ")+" · la web ya no la ofrece","🚫"),2600);
+      refrescar();
+    },{enviar:"Confirmar"});
+}
+
+const DEMO = {
   negocio:"Boutique Alma", rubro:"Ropa y accesorios", emoji:"👗",
+  estado:{clave:"boutique", get:()=>S, set:o=>{S=o;}},
   secciones:[
     {
       id:"panel", nombre:"Panel", ic:"📊",
       titulo:"Tu tienda hoy", sub:"Local y tienda en línea compartiendo el mismo inventario",
+      accion:{txt:"+ Vender / apartar", fn:vender},
       render(root){
         root.innerHTML = `
           <div class="kpis">
-            <div class="kpi"><div class="lbl">Ventas del mes</div><div class="val">$34,180</div><div class="delta up">▲ 22% vs. mes pasado</div></div>
-            <div class="kpi"><div class="lbl">Apartados activos</div><div class="val">${pendientes().length}</div><div class="delta flat">${money(pendientes().reduce((s,a)=>s+a.total,0))} comprometido</div></div>
-            <div class="kpi"><div class="lbl">Visitas al catálogo</div><div class="val">${miles(prendas.reduce((s,p)=>s+p.vistas,0))}</div><div class="delta up">▲ 31% esta semana</div></div>
-            <div class="kpi"><div class="lbl">Prendas en piso</div><div class="val">${prendas.reduce((s,p)=>s+stock(p),0)}</div><div class="delta ${ultimas().length?"down":"flat"}">${ultimas().length} en última pieza</div></div>
+            <div class="kpi"><div class="lbl">Ventas del mes</div><div class="val">${money(S.ventasMes+ventasHoy())}</div><div class="delta up">hoy ${money(ventasHoy())} en ${S.ventas.length} venta(s)</div></div>
+            <div class="kpi"><div class="lbl">Apartados activos</div><div class="val">${pendientes().length}</div><div class="delta flat">${money(pendientes().reduce((s,a)=>s+a.total-cuota(a)*a.pagado,0))} por cobrar</div></div>
+            <div class="kpi"><div class="lbl">Visitas al catálogo</div><div class="val">${miles(S.prendas.reduce((s,p)=>s+p.vistas,0))}</div><div class="delta up">esta semana</div></div>
+            <div class="kpi"><div class="lbl">Prendas en piso</div><div class="val">${S.prendas.reduce((s,p)=>s+stock(p),0)}</div><div class="delta ${ultimas().length?"down":"flat"}">${ultimas().length} en última pieza</div></div>
           </div>
           ${ultimas().length?`<div class="note warn"><span class="ic">👗</span><div>
             <b>${ultimas().length} prenda(s) en última pieza</b>
             <span>${ultimas().map(p=>p.n).join(", ")} — considera reabastecer antes del fin de semana</span></div></div>`:""}
+          ${porEntregar().length?`<div class="note ok"><span class="ic">🎁</span><div>
+            <b>${porEntregar().length} apartado(s) liquidados por entregar</b>
+            <span>${porEntregar().map(a=>a.cliente).join(", ")} · ya se les avisó por WhatsApp</span></div></div>`:""}
           <div class="cols">
             <div class="panel">
               <div class="panel-h"><h2>Lo más visto en el catálogo</h2><span class="sub">El enlace que compartes por WhatsApp</span></div>
               <div class="panel-b flush"><table class="tbl"><tbody>
-                ${[...prendas].sort((a,b)=>b.vistas-a.vistas).slice(0,4).map(p=>`
+                ${[...S.prendas].sort((a,b)=>b.vistas-a.vistas).slice(0,4).map(p=>`
                   <tr>
                     <td><div class="cellmain"><div class="em">${p.e}</div>
                       <div><b>${esc(p.n)}</b><span>${p.vistas} visitas · ${stock(p)} en existencia</span></div></div></td>
@@ -73,31 +111,35 @@ startDemo({
               </tbody></table></div>
             </div>
             <div class="panel">
-              <div class="panel-h"><h2>Cobranza de apartados</h2></div>
-              <div class="panel-b">
-                ${pendientes().length?pendientes().map(a=>`
-                  <div style="padding:10px 0;border-bottom:1px solid var(--line)">
-                    <div style="display:flex;justify-content:space-between;gap:10px">
-                      <b>${esc(a.cliente)}</b><span style="color:var(--ink-3);font-size:.85rem">vence ${esc(a.vence)}</span></div>
-                    <div style="margin:7px 0 4px">${bar(a.pagado/a.plan)}</div>
-                    <span style="font-size:.82rem;color:var(--ink-3)">${a.pagado} de ${a.plan} pagos · ${money(cuota(a))} c/u</span>
-                  </div>`).join(""):`<div class="empty"><b>Sin pagos pendientes</b></div>`}
-              </div>
+              <div class="panel-h"><h2>Ventas de hoy</h2></div>
+              <div class="panel-b flush"><table class="tbl"><tbody>
+                ${S.ventas.length?S.ventas.map(v=>`<tr>
+                  <td><b>${esc(v.cliente)}</b><br><span style="color:var(--ink-3);font-size:.82rem">${v.prendas.map(esc).join(", ")} · ${esc(v.canal)} · ${v.hora}</span></td>
+                  <td class="num strong">${money(v.total)}</td></tr>`).join(""):`<tr><td><div class="empty"><b>Aún sin ventas hoy</b></div></td></tr>`}
+              </tbody></table></div>
             </div>
           </div>`;
       }
     },
     {
       id:"catalogo", nombre:"Catálogo", ic:"🛍️",
-      titulo:"Catálogo e inventario", sub:"Apagar una prenda la quita de la tienda en línea al instante",
+      titulo:"Catálogo e inventario", sub:"Vender una talla la descuenta del local y de la web al mismo tiempo",
       badge:()=>agotadas().length||"",
+      accion:{txt:"+ Nueva prenda", fn:(refrescar)=>drawer("Nueva prenda",`
+          ${campo("Nombre",`<input name="n" required placeholder="Falda plisada">`)}
+          <div class="fc-row">${campo("Precio",`<input name="p" type="number" min="1" required placeholder="499">`)}
+          ${campo("Emoji",`<input name="e" value="👗" maxlength="4">`)}</div>
+          ${campo("Tallas y piezas",`<div class="pick">${["CH","M","G","XL"].map(t=>`<label><b>${t}</b><input type="number" name="t_${t}" value="0" min="0" max="50"></label>`).join("")}</div>`)}`,
+        d=>{const tallas={};["CH","M","G","XL"].forEach(t=>{const q=parseInt(d["t_"+t]||"0",10);if(q>0)tallas[t]=q;});
+          if(!Object.keys(tallas).length){toast("Captura al menos una talla","⚠️");return false;}
+          S.prendas.push({e:d.e||"👗",n:d.n,p:+d.p,tallas,vistas:0,online:true});toast(d.n+" publicada en el catálogo","✅");refrescar();})},
       render(root, refrescar){
         root.innerHTML = `
           <div class="panel">
             <div class="panel-h"><h2>Prendas</h2><span class="sub">Existencia por talla, compartida entre local y web</span></div>
             <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
-              <thead><tr><th>Prenda</th><th class="num">Precio</th><th>Existencia por talla</th><th class="num">Visitas</th><th>En línea</th></tr></thead>
-              <tbody>${prendas.map((p,i)=>`
+              <thead><tr><th>Prenda</th><th class="num">Precio</th><th>Existencia por talla</th><th class="num">Visitas</th><th>En línea</th><th></th></tr></thead>
+              <tbody>${S.prendas.map((p,i)=>`
                 <tr>
                   <td><div class="cellmain"><div class="em">${p.e}</div>
                     <div><b>${esc(p.n)}</b><span>${stock(p)} en total</span></div></div></td>
@@ -106,56 +148,75 @@ startDemo({
                     `<span class="tag ${q===0?"bad":q===1?"warn":"ok"}" style="margin-right:5px">${t}: ${q}</span>`).join("")}</td>
                   <td class="num" style="color:var(--ink-3)">${p.vistas}</td>
                   <td><button class="btn sm ${p.online?"":"primary"}" data-on="${i}">${p.online?"Visible ✓":"Oculta"}</button></td>
+                  <td class="num"><div class="actions" style="justify-content:flex-end">
+                    ${stock(p)?`<button class="btn sm primary" data-v="${i}">Vender</button>`:""}
+                    <button class="btn sm" data-re="${i}">Reabastecer</button></div></td>
                 </tr>`).join("")}</tbody>
             </table></div></div>
           </div>`;
         root.querySelectorAll("[data-on]").forEach(b=>b.onclick=()=>{
-          const p=prendas[+b.dataset.on]; p.online=!p.online;
-          toast(p.online?esc(p.n)+" visible en la tienda en línea":esc(p.n)+" oculta del catálogo", p.online?"👁️":"🚫");
+          const p=S.prendas[+b.dataset.on]; p.online=!p.online;
+          toast(p.online?p.n+" visible en la tienda en línea":p.n+" oculta del catálogo", p.online?"👁️":"🚫");
           refrescar();
+        });
+        root.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>vender(refrescar,S.prendas[+b.dataset.v].n));
+        root.querySelectorAll("[data-re]").forEach(b=>b.onclick=()=>{
+          const p=S.prendas[+b.dataset.re];
+          drawer("Reabastecer "+p.n,`${campo("Piezas que llegaron",`<div class="pick">${Object.keys(p.tallas).map(t=>`<label><b>${esc(t)}</b><span>hay ${p.tallas[t]}</span><input type="number" name="t_${esc(t)}" value="0" min="0" max="50"></label>`).join("")}</div>`)}`,
+            d=>{let n=0;Object.keys(p.tallas).forEach(t=>{const q=parseInt(d["t_"+t]||"0",10);p.tallas[t]+=q;n+=q;});
+              if(!n){toast("Captura alguna cantidad","⚠️");return false;} toast("+"+n+" pz de "+p.n+" · ya se ofrecen en la web","📦"); refrescar();},{enviar:"Registrar"});
         });
       }
     },
     {
       id:"apartados", nombre:"Apartados", ic:"🏷️",
       titulo:"Apartados y pagos a plazos", sub:"Con recordatorio automático por WhatsApp antes de cada quincena",
-      badge:()=>pendientes().length||"",
+      badge:()=>(pendientes().length+porEntregar().length)||"",
+      accion:{txt:"+ Nuevo apartado", fn:vender},
       render(root, refrescar){
         root.innerHTML = `
           <div class="panel">
             <div class="panel-h"><h2>Apartados</h2></div>
             <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
               <thead><tr><th>Folio</th><th>Cliente</th><th>Prendas</th><th style="width:170px">Avance</th><th class="num">Total</th><th></th></tr></thead>
-              <tbody>${apartados.map((a,i)=>`
+              <tbody>${S.apartados.map((a,i)=>`
                 <tr>
                   <td class="strong">${esc(a.folio)}</td>
-                  <td><b>${esc(a.cliente)}</b><br><span style="color:var(--ink-3);font-size:.82rem">📞 ${esc(a.tel)}</span></td>
+                  <td><b>${esc(a.cliente)}</b><br><span style="color:var(--ink-3);font-size:.82rem">📞 ${esc(a.tel)}${a.pagado<a.plan?" · vence "+esc(a.vence):""}</span></td>
                   <td style="font-size:.88rem">${a.prendas.map(esc).join("<br>")}</td>
                   <td>${bar(a.pagado/a.plan)}
                     <span style="font-size:.8rem;color:var(--ink-3)">${a.pagado}/${a.plan} pagos de ${money(cuota(a))}</span></td>
                   <td class="num strong">${money(a.total)}</td>
-                  <td class="num" style="white-space:nowrap">${a.pagado<a.plan
+                  <td class="num"><div class="actions" style="justify-content:flex-end">${a.pagado<a.plan
                     ? `<button class="btn sm primary" data-pago="${i}">Registrar pago</button>
                        <button class="btn sm" data-rec="${i}">Recordar</button>`
-                    : `<span class="tag ok">Liquidado</span>`}</td>
+                    : a.entregado?`<span class="tag neutral">Entregado</span>`:`<span class="tag ok">Liquidado</span><button class="btn sm primary" data-ent="${i}">Entregar</button>`}</div></td>
                 </tr>`).join("")}</tbody>
             </table></div></div>
           </div>`;
         root.querySelectorAll("[data-pago]").forEach(b=>b.onclick=()=>{
-          const a=apartados[+b.dataset.pago]; a.pagado++;
-          toast(a.pagado===a.plan
-            ? esc(a.folio)+" liquidado · prendas listas para entregar"
-            : "Pago "+a.pagado+" de "+a.plan+" registrado para "+esc(a.cliente), a.pagado===a.plan?"🎉":"💵");
-          refrescar();
+          const a=S.apartados[+b.dataset.pago];
+          drawer("Pago de "+a.cliente,`<div class="ticket"><div class="r"><span>${a.folio} · ${a.prendas.map(esc).join(", ")}</span></div>
+            <div class="r"><span>Pagado</span><span>${money(cuota(a)*a.pagado)}</span></div><div class="r t"><span>Pago ${a.pagado+1} de ${a.plan}</span><span>${money(a.pagado+1===a.plan?a.total-cuota(a)*a.pagado:cuota(a))}</span></div></div>
+            ${campo("Forma de pago",`<select name="f">${opciones(["Efectivo","Transferencia","Tarjeta"])}</select>`)}`,
+            ()=>{ a.pagado++; if(a.pagado<a.plan) a.vence=fechaMas(15);
+              toast(a.pagado===a.plan? a.folio+" liquidado · aviso enviado a "+a.cliente+" para recoger" : "Pago "+a.pagado+" de "+a.plan+" registrado · siguiente vence "+a.vence, a.pagado===a.plan?"🎉":"💵");
+              refrescar(); },{enviar:"Registrar pago"});
         });
         root.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{
-          const a=apartados[+b.dataset.rec];
-          toast("Recordatorio enviado a "+esc(a.cliente)+" al "+esc(a.tel),"📲");
+          const a=S.apartados[+b.dataset.rec];
+          toast("Recordatorio enviado a "+a.cliente+" al "+a.tel,"📲");
+        });
+        root.querySelectorAll("[data-ent]").forEach(b=>b.onclick=()=>{
+          const a=S.apartados[+b.dataset.ent]; a.entregado=true;
+          S.ventas.unshift({folio:"V-"+(S.seqV++),hora:hora(),cliente:a.cliente,prendas:a.prendas,total:a.total,canal:"Apartado"});
+          toast(a.folio+" entregado · venta cerrada por "+money(a.total),"🎁"); refrescar();
         });
       }
     }
   ]
-});
+};
+startDemo(DEMO);
 </script>
 </body>
 </html>
