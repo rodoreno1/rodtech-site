@@ -286,3 +286,5 @@ body.drawer-open{overflow:hidden}
 .pick input[type=checkbox]{width:auto;flex:none;margin:0;padding:0;border:0;accent-color:var(--brand)}
 .pick label b{text-align:left;min-width:0}
 .pick label span{white-space:nowrap}
+/* iOS hace zoom al enfocar un campo con letra menor a 16 px */
+@media(max-width:768px){.fc input,.fc select,.fc textarea,.field,.pick input[type=number]{font-size:16px}}

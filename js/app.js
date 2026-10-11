@@ -133,7 +133,10 @@ function heroIntro(){
 }
 
 /* ---------- PALABRA ROTATIVA: letra por letra (anime.js) ---------- */
-const words = ["automatice procesos","venda en línea","conecte sus sistemas","atienda mejor a sus clientes","crezca sin límites"];
+/* Todas caben en un renglón desde 360 px hasta 1920 px. "atienda mejor a
+   sus clientes" se partía en dos y el hero completo saltaba ~100 px en cada
+   rotación (botones y párrafo bajaban y subían cada 3 s). */
+const words = ["automatice procesos","venda en línea","conecte sus sistemas","atienda mejor","crezca sin límites"];
 let wi = 0;
 const rot = document.getElementById("rotator");
 /* replaceChildren en vez de innerHTML: sustituye todos los nodos en una
