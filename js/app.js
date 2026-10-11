@@ -414,14 +414,18 @@ function buildTile(t){
   document.querySelectorAll(".chreveal").forEach(el=>{
     const text = el.textContent;
     el.textContent = "";
-    const chars = [...text].map(ch=>{
+    /* Los espacios se quedan como texto suelto: si cada uno va en un <span>
+       con white-space:pre, el parrafo pierde sus puntos de salto de linea y
+       se sale de la pantalla en vez de envolver. */
+    const chars = [];
+    for(const ch of text){
+      if(ch === " "){ el.appendChild(document.createTextNode(" ")); continue; }
       const s = document.createElement("span");
       s.className = "ch";
       s.textContent = ch;
-      if(ch === " ") s.style.whiteSpace = "pre";
       el.appendChild(s);
-      return s;
-    });
+      chars.push(s);
+    }
     if(reduced){ gsap.set(chars,{opacity:1}); return; }
     gsap.to(chars,{opacity:1,ease:"none",stagger:0.5,
       scrollTrigger:{trigger:el,start:"top 85%",end:"bottom 55%",scrub:true}});

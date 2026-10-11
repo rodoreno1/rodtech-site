@@ -312,7 +312,7 @@ nav .logo,nav .nav-links{
    Dos filas que se cruzan: la de arriba avanza y la de abajo retrocede,
    ambas en función de cuánto has bajado en la página. */
 .smarquee{
-  padding:70px 0 60px;position:relative;z-index:2;overflow:hidden;
+  padding:44px 0 44px;position:relative;z-index:2;overflow:hidden;
   display:flex;flex-direction:column;gap:12px;
 }
 .smarquee-row{display:flex;gap:12px;width:max-content;will-change:transform}
@@ -349,7 +349,7 @@ nav .logo,nav .nav-links{
 @media(max-width:640px){.stile{width:290px;height:225px}}
 
 /* ---------- SECTIONS ---------- */
-section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
+section{padding:110px 0;position:relative;z-index:2;scroll-margin-top:70px}
 .section-head{
   display:flex;justify-content:space-between;align-items:flex-end;
   margin-bottom:64px;gap:24px;flex-wrap:wrap;
@@ -479,37 +479,15 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
 .section-light .progress-fill{background:linear-gradient(90deg,var(--violet),var(--neon));box-shadow:0 0 14px rgba(43,240,228,0.6)}
 @media(max-width:640px){.section-light{border-radius:30px 30px 0 0;padding:90px 0 100px}}
 
-/* ---------- TARJETAS QUE SE APILAN AL HACER SCROLL ----------
-   Cada tarjeta se queda pegada y la siguiente le pasa por encima;
-   las de abajo se encogen un poco para dar profundidad al montón. */
-.stack{position:relative;z-index:3}
-.stack-item{
-  height:78vh;min-height:440px;
-  display:flex;align-items:flex-start;justify-content:center;
-  position:relative;
-}
-.stack-card{
-  position:sticky;
-  width:100%;max-width:1000px;
-  border-radius:32px;
-  padding:52px 46px;
-  transform-origin:top center;
-  display:grid;grid-template-columns:auto 1fr auto;gap:30px;align-items:start;
-}
-.stack-card .num{
-  font-family:'Anton',sans-serif;font-size:clamp(2.6rem,7vw,5.2rem);line-height:0.85;
-  color:transparent;-webkit-text-stroke:1.5px rgba(139,92,246,0.55);
-}
-.stack-card h3{font-size:clamp(1.3rem,2.5vw,1.8rem);font-weight:600;line-height:1.2}
-.stack-card p{color:var(--muted);margin-top:14px;font-size:1.08rem;line-height:1.6;max-width:46ch}
-.stack-card .tag{
-  color:var(--neon);white-space:nowrap;align-self:center;
-}
-@media(max-width:760px){
-  .stack-item{height:auto;min-height:0;margin-bottom:16px}
-  .stack-card{position:relative;grid-template-columns:1fr;gap:14px;padding:34px 26px;transform:none!important}
-  .stack-card .tag{align-self:start}
-}
+/* ---------- CASOS: rejilla compacta ----------
+   Antes eran cinco tarjetas sticky de 78vh cada una (cuatro pantallas de
+   scroll para cinco frases). Ahora caben en una. */
+.cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.case{border-radius:22px;padding:30px 28px;display:flex;flex-direction:column;gap:12px}
+.case-num{font-family:"Space Mono",monospace;font-size:.82rem;color:var(--neon);letter-spacing:.1em}
+.case h3{font-size:1.18rem;font-weight:600;line-height:1.3}
+.case p{color:var(--muted);font-size:1rem;line-height:1.6;flex:1}
+.case .tag{align-self:flex-start;color:var(--pink)}
 
 /* ---------- REVELADO LETRA POR LETRA AL HACER SCROLL ---------- */
 .chreveal{color:var(--text)}
@@ -609,10 +587,10 @@ section{padding:140px 0;position:relative;z-index:2;scroll-margin-top:70px}
 @media(max-width:620px){.contact-form{grid-template-columns:1fr}}
 
 /* ---------- CTA ---------- */
-.cta-section{padding:150px 28px;scroll-margin-top:70px;position:relative;z-index:2}
+.cta-section{padding:110px 28px;scroll-margin-top:70px;position:relative;z-index:2}
 .cta{
   text-align:center;
-  border-radius:30px;max-width:1100px;margin:0 auto;padding:110px 30px;
+  border-radius:30px;max-width:1100px;margin:0 auto;padding:72px 30px;
 }
 .cta::before{
   content:"";position:absolute;width:700px;height:700px;border-radius:50%;
