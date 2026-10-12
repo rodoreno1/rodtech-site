@@ -435,6 +435,33 @@ function buildTile(t){
   });
 })();
 
+/* ==================== BARRA QUE SE ESCONDE AL BAJAR ====================
+   Baja la página → la barra se va; sube aunque sea un poco → vuelve. Se
+   acumula el desplazamiento en una dirección para que un tirón de 24 px
+   decida, y no cada pixel (en táctil el dedo tiembla). Cerca del inicio
+   siempre está visible. */
+(function initSmartNav(){
+  const nav = document.querySelector("nav");
+  if(!nav) return;
+  let lastY = scrollY, acumulado = 0, lock = 0, ticking = false;
+  function update(){
+    ticking = false;
+    const y = scrollY, dy = y - lastY;
+    lastY = y;
+    if(y < 80){ nav.classList.remove("is-hidden"); acumulado = 0; return; }
+    if(Date.now() < lock) return;
+    acumulado = (dy > 0) === (acumulado > 0) ? acumulado + dy : dy;
+    if(acumulado > 24) nav.classList.add("is-hidden");
+    else if(acumulado < -24) nav.classList.remove("is-hidden");
+  }
+  addEventListener("scroll",()=>{ if(!ticking){ ticking = true; requestAnimationFrame(update); } },{passive:true});
+  /* Al tocar un enlace de la barra, se queda visible mientras la página
+     viaja a esa sección (el viaje es "hacia abajo" y la escondería). */
+  nav.addEventListener("click",e=>{
+    if(e.target.closest('a[href^="#"]')){ lock = Date.now() + 1200; nav.classList.remove("is-hidden"); }
+  });
+})();
+
 /* ==================== SCROLLSPY: resalta la sección activa en el nav ==================== */
 const spyLinks = [...document.querySelectorAll('#navLinks a[href^="#"]:not(.nav-cta)')];
 const spySections = ["servicios","ideas","proceso","problemas","nosotros","faq","contacto"]

@@ -174,7 +174,14 @@ body.has-hero-video .hero::before{opacity:.35}
 nav{
   position:fixed;top:16px;left:0;right:0;z-index:60;
   padding:0 28px;pointer-events:none;
+  transition:transform .35s ease;
 }
+/* Se esconde al bajar y reaparece al subir (lo controla initSmartNav en
+   app.js). Mientras se lee, la pantalla queda libre; en cuanto la persona
+   sube un poco —que es el gesto de "quiero ir a otro lado"— vuelve. Si el
+   foco del teclado entra en la barra, se muestra aunque esté escondida. */
+nav.is-hidden{transform:translateY(calc(-100% - 24px))}
+nav.is-hidden:focus-within{transform:none}
 .nav-inner{
   display:flex;justify-content:space-between;align-items:center;gap:14px;
   max-width:1200px;margin:0 auto;pointer-events:auto;
