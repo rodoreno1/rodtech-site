@@ -1,9 +1,10 @@
 /* ==================== UTILIDADES COMPARTIDAS DE LOS DEMOS ====================
-   Cada demo simula un sistema real: los datos son ficticios, pero las fechas,
-   los folios, los totales y los tiempos se calculan de verdad a partir del
-   reloj del visitante. Un demo con "18 jul" quemado en el código se ve viejo
-   a los tres días; uno que dice "entrega el jueves 4 de septiembre" se lee
-   como un sistema que está corriendo ahora mismo. */
+   Seis sistemas de ejemplo para operaciones industriales y B2B: importaciones,
+   flotilla, almacén, cotizador, portal de clientes y producción. Los datos
+   son ficticios, pero las fechas, los folios, los totales y los tiempos se
+   calculan de verdad a partir del reloj del visitante: un demo con "18 jul"
+   quemado en el código se ve viejo a los tres días; uno que dice "ETA jueves
+   4 de septiembre" se lee como un sistema que está corriendo ahora mismo. */
 
 /* Temporizadores de los demos: se limpian al abrir/cerrar el modal (ver app.js) */
 const demoTimers = [];
@@ -84,9 +85,9 @@ function itemRow(o){
 /* Botones − / cantidad / + */
 function stepper(key, valor, opts){
   const o = opts||{};
-  return `<button class="dapp-btn-sm minus" data-minus="${key}" aria-label="Quitar uno"${valor?"":" disabled"}>−</button>
+  return `<button class="dapp-btn-sm minus" data-minus="${attr(key)}" aria-label="Quitar uno"${valor?"":" disabled"}>−</button>
     <span class="dapp-qty" aria-live="polite">${valor}${o.unidad?`<i>${o.unidad}</i>`:""}</span>
-    <button class="dapp-btn-sm" data-plus="${key}" aria-label="Agregar uno"${o.tope&&valor>=o.tope?" disabled":""}>+</button>`;
+    <button class="dapp-btn-sm" data-plus="${attr(key)}" aria-label="Agregar uno"${o.tope&&valor>=o.tope?" disabled":""}>+</button>`;
 }
 
 /* Notificación flotante dentro del modal */
@@ -144,953 +145,733 @@ function sparkline(datos, etiquetas){
   </div>`;
 }
 
+/* Miles con separador, para piezas y toneladas */
+const miles = n => Number(n).toLocaleString("es-MX");
+/* Para meter un nombre de producto en un atributo: las pulgadas (8") rompían
+   el data-plus="…" y el botón dejaba de encontrar su partida. */
+const attr = s => String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+/* Dólares con dos decimales, para FOB y precios referenciados en USD */
+const usd = n => "USD " + n.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+/* Tipo de cambio "del día": estable durante la visita, verosímil entre visitas */
+const TC = 18.42;
+
 const DEMOS = {
 
-/* ============ 1. RESTAURANTE ============
-   Menú por QR en la mesa → revisión → comanda en vivo → cuenta.
-   Realismo: tiempos de preparación por platillo, cuenta regresiva real,
-   folio y hora de la comanda, división de la cuenta y ticket final. */
-restaurante:{
-  title:"Pedidos en mesa",
+/* ============ 1. IMPORTACIONES ============
+   Embarques del proveedor extranjero a la bodega: etapa, ETA, pedimento y el
+   costeo landed (lo que de verdad cuesta cada pieza puesta en México), más
+   la orden de compra al proveedor. */
+importaciones:{
+  title:"Importaciones y embarques",
   render(root){
-    const menu = {
-      "Platillos":[
-        {e:"🌮",n:"Tacos de pastor (orden)",d:"5 piezas con piña y cilantro",p:95,min:12,tag:"Más pedido"},
-        {e:"🥘",n:"Enchiladas verdes",d:"Pollo, crema y queso fresco",p:110,min:18},
-        {e:"🍔",n:"Hamburguesa de la casa",d:"Res 200 g, tocino y papas",p:145,min:20,tag:"Nuevo"},
-        {e:"🥗",n:"Ensalada César",d:"Con pollo a la parrilla",p:98,min:10,dieta:"🥬"},
-        {e:"🌶️",n:"Chiles rellenos (2)",d:"Queso oaxaca, caldillo de jitomate",p:132,min:22,picante:true},
-        {e:"🍗",n:"Mole de la abuela",d:"Pierna de pollo y arroz",p:125,min:15,agotado:true}
-      ],
-      "Bebidas":[
-        {e:"🍹",n:"Agua del día 1 L",d:"Hoy: horchata con nuez",p:45,min:2},
-        {e:"🥤",n:"Refresco",d:"Vidrio 355 ml",p:30,min:2},
-        {e:"☕",n:"Café de olla",d:"Con piloncillo y canela",p:38,min:5},
-        {e:"🍋",n:"Limonada mineral",d:"Vaso 500 ml",p:42,min:3}
-      ],
-      "Postres":[
-        {e:"🍮",n:"Flan napolitano",d:"Receta de la casa",p:55,min:2},
-        {e:"🍩",n:"Churros (4)",d:"Con cajeta o chocolate",p:48,min:12},
-        {e:"🍫",n:"Pastel de chocolate",d:"Rebanada",p:62,min:2}
-      ]
-    };
-    const all = Object.values(menu).flat();
-    const find = n => all.find(x=>x.n===n);
+    const ETAPAS = ["Zarpó del origen","En tránsito marítimo","En aduana · Manzanillo","Liberado · en camino a bodega","Recibido en bodega"];
+    const provs = ["Shenzhen Hengli Tools","Ningbo Steelworks Co.","Houston Pump Supply"];
+    let embarques = [
+      {id:"MSKU-447812-3",prov:"Shenzhen Hengli Tools",desc:"Taladros y esmeriles",pz:1200,fob:48600,flete:2900,igi:5,etapa:2,eta:3,oc:"OC-2026-0318",cont:"40' HC",peso:"8,400 kg",ped:"26 47 3421 6012345"},
+      {id:"TGHU-991204-7",prov:"Ningbo Steelworks Co.",desc:"Rodamientos y bandas",pz:3800,fob:31250,flete:2650,igi:10,etapa:1,eta:11,oc:"OC-2026-0322",cont:"20' DV",peso:"6,100 kg",ped:"—"},
+      {id:"CMAU-205583-1",prov:"Houston Pump Supply",desc:"Bombas centrífugas 5 HP",pz:24,fob:62000,flete:1800,igi:0,etapa:4,eta:0,oc:"OC-2026-0301",cont:"Consolidado terrestre",peso:"2,900 kg",ped:"26 24 3410 6009871"},
+      {id:"OOLU-883421-0",prov:"Shenzhen Hengli Tools",desc:"Refacciones y accesorios",pz:5400,fob:12800,flete:2400,igi:5,etapa:0,eta:26,oc:"OC-2026-0331",cont:"20' DV",peso:"3,200 kg",ped:"—"}
+    ];
+    const catalogo = [
+      {n:"Taladro percutor 1/2\"",p:38.5,moq:200},
+      {n:"Esmeril angular 4 1/2\"",p:27.9,moq:200},
+      {n:"Rodamiento 6205-2RS",p:1.15,moq:1000},
+      {n:"Banda en V A-42",p:2.4,moq:500},
+      {n:"Bomba centrífuga 5 HP",p:2580,moq:4}
+    ];
+    let tab="En tránsito", view="lista", sel=null, oc={}, provOC=provs[0], incoterm="FOB";
+    const abiertos = () => embarques.filter(e=>e.etapa<4);
+    const enBodega = () => embarques.filter(e=>e.etapa===4);
 
-    let cart={}, tab="Platillos", q="", tip=10, note="", view="menu";
-    let track=0, pago="Efectivo", sentAt="", comanda="", listoAt=0, personas=1, mesero=false;
-
-    const subtotal = () => Object.entries(cart).reduce((s,[k,v])=>s+find(k).p*v,0);
-    const count = () => Object.values(cart).reduce((a,b)=>a+b,0);
-    const tipAmt = () => Math.round(subtotal()*tip/100);
-    const totalCuenta = () => subtotal()+tipAmt();
-    /* El tiempo estimado sale del platillo más tardado, no de un número fijo */
-    const espera = () => Math.max(10, ...Object.keys(cart).map(k=>find(k).min||10));
-
-    function restante(){
-      const s = Math.max(0, Math.round((listoAt - Date.now())/1000));
-      return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+    /* Costeo landed: lo que cuesta cada pieza ya en bodega, en pesos */
+    function costeo(e){
+      const fobMX = e.fob*TC, fleteMX = e.flete*TC, seguro = Math.round(fobMX*0.004);
+      const base = fobMX+fleteMX+seguro;
+      const igi = Math.round(base*e.igi/100), dta = Math.round(base*0.008);
+      const iva = Math.round((base+igi+dta)*0.16);
+      const aa = Math.round(base*0.0045)+6500;
+      const total = Math.round(base+igi+dta+iva+aa);
+      return {fobMX:Math.round(fobMX),fleteMX:Math.round(fleteMX),seguro,igi,dta,iva,aa,total,unit:total/e.pz};
     }
+    const tagEtapa = e => e.etapa===4?'<span class="dapp-badge green">En bodega</span>'
+      : e.etapa===2?'<span class="dapp-badge amber">En aduana</span>'
+      : e.etapa===3?'<span class="dapp-badge violet">Liberado</span>':'<span class="dapp-badge violet">En tránsito</span>';
 
-    /* La comanda avanza sola, como si la cocina fuera marcando pasos */
-    function scheduleTrack(){
-      [[3000,1],[6500,2],[10000,3]].forEach(([ms,s])=>dLater(()=>{
-        if(track<s){
-          track=s;
-          if(view==="track"){ paint(); toast(["","Tu pedido está en la plancha","Tu pedido va en camino","¡Buen provecho!"][s], ["","🔥","🧑‍🍳","🍽️"][s]); }
-        }
-      },ms));
-      dEvery(()=>{
-        const el = root.querySelector("#cuenta");
-        if(el) el.textContent = restante();
-      },1000);
-    }
+    /* La aduana libera un contenedor mientras la persona mira: así se siente un sistema vivo */
+    dLater(()=>{
+      const e = embarques.find(x=>x.id==="MSKU-447812-3");
+      if(e && e.etapa===2){ e.etapa=3; e.eta=1; toast("MSKU-447812-3 liberado en aduana","🛃"); if(view!=="oc") paint(); }
+    },7000);
 
     function paint(){
-      if(view==="menu"){
-        const list = q ? all.filter(it=>it.n.toLowerCase().includes(q.toLowerCase())) : menu[tab];
+      if(view==="detalle" && sel){
+        const e = sel, c = costeo(e);
         root.innerHTML =
-          appHead("🍽️","La Cocina de Rosa","Mesa 4 · menú digital por QR",
-            `<button class="dapp-mini" id="waiter"${mesero?" disabled":""}>${mesero?"🔔 Ya viene":"🔔 Mesero"}</button>`) + `
-          <div class="dapp-body">
-            <input class="dapp-search" id="q" placeholder="🔍 Buscar en el menú…" value="${q}" aria-label="Buscar en el menú">
-            ${q?"":`<div class="dapp-tabs">${Object.keys(menu).map(c=>
-              `<button class="dapp-tab ${c===tab?'active':''}" data-tab="${c}">${c}</button>`).join("")}</div>`}
-            ${list.length ? list.map(it=>itemRow({
-                emoji: it.e, mute: it.agotado,
-                title: `${it.n}${it.tag?` <span class="dapp-badge violet">${it.tag}</span>`:""}${it.picante?' <span class="dapp-badge red">Picante</span>':""}${it.dieta?` <span class="dapp-badge green">Ligero</span>`:""}${it.agotado?' <span class="dapp-badge red">Se agotó hoy</span>':""}`,
-                meta: `${it.d} · ⏱ ${it.min} min`,
-                side: `<span class="price">${money(it.p)}</span>` +
-                      (it.agotado ? "" : stepper(it.n, cart[it.n]||0))
-              })).join("")
-              : `<div class="dapp-empty"><span>🔍</span><b>Sin resultados para "${q}"</b>
-                 <p>Prueba con otra palabra o pregúntale al mesero.</p></div>`}
-            <p class="dapp-note">Precios con IVA incluido. El menú lo actualiza el dueño desde su celular.</p>
-          </div>
-          <div class="dapp-bar">
-            <div class="dapp-total"><span>${count()} ${count()===1?"artículo":"artículos"}</span><b>${money(subtotal())}</b></div>
-            <button class="dapp-cta" id="goReview" ${count()===0?"disabled":""}>Revisar pedido</button>
-          </div>`;
-        const w = root.querySelector("#waiter");
-        if(w) w.onclick=()=>{
-          mesero=true; paint();
-          toast("Lupita va en camino a tu mesa","🔔");
-          dLater(()=>{ mesero=false; if(view==="menu") paint(); },8000);
-        };
-        root.querySelector("#q").oninput=e=>{q=e.target.value;paint();keepCaret(root,"#q");};
-        root.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;paint();});
-        root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{cart[b.dataset.plus]=(cart[b.dataset.plus]||0)+1;paint();});
-        root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{
-          const k=b.dataset.minus; if(cart[k]){cart[k]--; if(!cart[k])delete cart[k];} paint();});
-        const go = root.querySelector("#goReview");
-        if(go) go.onclick=()=>{view="review";paint();};
-      }
-
-      else if(view==="review"){
-        root.innerHTML =
-          appHead("🧾","Revisa tu pedido","Mesa 4 · aún no se envía a cocina") + `
-          <div class="dapp-body">
-            <div class="dapp-sheet">
-              ${Object.entries(cart).map(([k,v])=>`
-                <div class="dapp-row"><span>${find(k).e} ${v}× ${k}</span><span>${money(find(k).p*v)}</span></div>`).join("")}
-              <div class="dapp-row"><span>Subtotal</span><span>${money(subtotal())}</span></div>
-              <div class="dapp-row"><span>Propina (${tip}%)</span><span>${money(tipAmt())}</span></div>
-              <div class="dapp-row total"><span>Total</span><span>${money(totalCuenta())}</span></div>
-            </div>
-            <label class="dapp-label" for="nota">¿Alguna indicación para la cocina?</label>
-            <textarea class="dapp-input" id="nota" placeholder="Ej. sin cebolla, salsa aparte, término tres cuartos…">${note}</textarea>
-            <div class="dapp-label">Propina para el equipo</div>
-            <div class="dapp-tabs">${[0,10,15,20].map(t=>
-              `<button class="dapp-tab ${t===tip?'active':''}" data-tip="${t}">${t===0?"Sin propina":t+"%"}</button>`).join("")}</div>
-            <div class="dapp-alert blue">
-              <span>⏱️</span>
-              <div><b>Tiempo estimado: ${espera()} min</b>
-              <span>Lo calcula el platillo más tardado de tu pedido, no un promedio.</span></div>
-            </div>
-          </div>
-          <div class="dapp-bar">
-            <button class="dapp-tab" id="back">← Menú</button>
-            <button class="dapp-cta" id="confirm">Enviar a cocina</button>
-          </div>`;
-        root.querySelector("#nota").oninput=e=>note=e.target.value;
-        root.querySelectorAll("[data-tip]").forEach(b=>b.onclick=()=>{tip=+b.dataset.tip;paint();});
-        root.querySelector("#back").onclick=()=>{view="menu";paint();};
-        root.querySelector("#confirm").onclick=()=>{
-          view="track"; track=0;
-          sentAt = ahora();
-          comanda = "C-" + String(new Date().getDate()).padStart(2,"0") + String(folioSeq++%100).padStart(2,"0");
-          listoAt = Date.now() + espera()*60000;
-          scheduleTrack();
-          toast("Comanda "+comanda+" enviada a cocina","👨‍🍳");
-          paint();
-        };
-      }
-
-      else if(view==="track"){
-        const pasos=[
-          ["Recibido en cocina","La cocina ya lo vio en su pantalla"],
-          ["Preparando tus platillos","Chef Rosa está en ello"],
-          ["En camino a tu mesa","Lupita lo lleva"],
-          ["Servido · ¡buen provecho!","Cualquier cosa, pide desde aquí"]
-        ];
-        root.innerHTML =
-          appHead("👨‍🍳","Comanda "+comanda,"Mesa 4 · enviada a las "+sentAt) + `
+          appHead("🚢","Contenedor "+e.id,e.desc+" · "+miles(e.pz)+" pz · "+e.cont) + `
           <div class="dapp-body">
             <div class="dapp-countdown">
-              <div><span>Listo en aproximadamente</span><b id="cuenta">${restante()}</b></div>
-              <span class="dapp-badge violet">En vivo</span>
+              <div><span>${e.etapa===4?"Recibido":"Llegada estimada a bodega"}</span><b>${e.etapa===4?"Completo":e.eta===0?"Hoy":e.eta===1?"Mañana":fechaCorta(e.eta)}</b></div>
+              ${tagEtapa(e)}
             </div>
             <div class="dapp-timeline">
-              ${pasos.map(([p,sub],i)=>`
-                <div class="tl-step ${i<track?"done":i===track?"now":""}">
-                  <div class="tl-dot">${i<track?"✓":i===track?"●":""}</div>
-                  <div><b>${p}</b><span>${i<=track?sub:"—"}</span></div>
-                </div>`).join("")}
+              ${ETAPAS.map((p,i)=>`<div class="tl-step ${i<e.etapa?"done":i===e.etapa?"now":""}">
+                <div class="tl-dot">${i<e.etapa?"✓":i===e.etapa?"●":""}</div>
+                <div><b>${p}</b><span>${i===2&&e.etapa>=2?"Pedimento "+e.ped:i===e.etapa?"ahora mismo":i<e.etapa?fechaCorta(-(e.etapa-i)*6):"—"}</span></div>
+              </div>`).join("")}
             </div>
-            <div class="dapp-ticket">
-              <div class="ticket-head"><b>COCINA · MESA 4</b><span>${comanda} · ${sentAt}</span></div>
-              ${Object.entries(cart).map(([k,v])=>`<div class="dapp-row"><span>${v}× ${k}</span><span>⏱ ${find(k).min}′</span></div>`).join("")}
-              ${note?`<div class="ticket-nota">📝 ${note}</div>`:""}
-            </div>
-            <p class="dapp-note">La cocina recibe la comanda al instante: sin papel, sin gritos, sin errores de letra.</p>
-          </div>
-          <div class="dapp-bar">
-            <div class="dapp-total"><span>Total con propina</span><b>${money(totalCuenta())}</b></div>
-            <button class="dapp-cta" id="bill">💳 Pedir la cuenta</button>
-          </div>`;
-        root.querySelector("#bill").onclick=()=>{view="bill";paint();};
-      }
-
-      else{
-        const porPersona = Math.ceil(totalCuenta()/personas);
-        root.innerHTML =
-          appHead("💳","Tu cuenta","Mesa 4 · comanda "+comanda) + `
-          <div class="dapp-body">
+            <div class="dapp-label">Costeo landed · TC ${TC.toFixed(2)} (DOF de hoy)</div>
             <div class="dapp-sheet">
-              <div class="dapp-row"><span>Consumo</span><span>${money(subtotal())}</span></div>
-              <div class="dapp-row"><span>Propina (${tip}%)</span><span>${money(tipAmt())}</span></div>
-              <div class="dapp-row total"><span>Total a pagar</span><span>${money(totalCuenta())}</span></div>
+              <div class="dapp-row"><span>FOB ${usd(e.fob)}</span><span>${money(c.fobMX)}</span></div>
+              <div class="dapp-row"><span>Flete marítimo ${usd(e.flete)}</span><span>${money(c.fleteMX)}</span></div>
+              <div class="dapp-row"><span>Seguro 0.4%</span><span>${money(c.seguro)}</span></div>
+              <div class="dapp-row"><span>IGI ${e.igi}%</span><span>${money(c.igi)}</span></div>
+              <div class="dapp-row"><span>DTA 0.8%</span><span>${money(c.dta)}</span></div>
+              <div class="dapp-row"><span>IVA 16%</span><span>${money(c.iva)}</span></div>
+              <div class="dapp-row"><span>Agente aduanal y maniobras</span><span>${money(c.aa)}</span></div>
+              <div class="dapp-row total"><span>Costo total en bodega</span><span>${money(c.total)}</span></div>
+              <div class="dapp-row is-ok"><span><b>Costo por pieza</b></span><span><b>${money(Math.round(c.unit*100)/100)}</b></span></div>
             </div>
-            <div class="dapp-label">¿Se divide la cuenta?</div>
-            <div class="dapp-chips">
-              ${[1,2,3,4].map(n=>`<button class="chip ${n===personas?'on':''}" data-per="${n}">${n===1?"No, una sola":n+" personas"}</button>`).join("")}
-            </div>
-            ${personas>1?`<div class="dapp-alert blue"><span>➗</span>
-              <div><b>${money(porPersona)} por persona</b><span>Cada quien puede pagar por separado desde su celular</span></div></div>`:""}
-            <div class="dapp-label">¿Cómo quieres pagar?</div>
-            <div class="dapp-chips">
-              ${[["Efectivo","💵"],["Tarjeta en mesa","💳"],["Transferencia","📲"]].map(([m,ic])=>
-                `<button class="chip ${pago===m?'on':''}" data-pago="${m}">${ic} ${m}</button>`).join("")}
-            </div>
+            <p class="dapp-note">El costo por pieza se recalcula solo con el tipo de cambio del día: el precio de venta nunca se queda viejo.</p>
           </div>
           <div class="dapp-bar">
-            <button class="dapp-tab" id="back">← Comanda</button>
-            <button class="dapp-cta" id="pay">Pagar ${money(personas>1?porPersona:totalCuenta())}</button>
+            <button class="dapp-tab" id="back">← Embarques</button>
+            <button class="dapp-cta" id="avisar">📲 Avisar a ventas</button>
           </div>`;
-        root.querySelectorAll("[data-per]").forEach(b=>b.onclick=()=>{personas=+b.dataset.per;paint();});
-        root.querySelectorAll("[data-pago]").forEach(b=>b.onclick=()=>{pago=b.dataset.pago;paint();});
-        root.querySelector("#back").onclick=()=>{view="track";paint();};
-        root.querySelector("#pay").onclick=()=>{
-          toast("Pago registrado en caja","🧾");
-          successScreen(root,"🧾","¡Gracias por tu visita!",
-            "La mesa 4 quedó libre en el sistema y el ticket ya está en caja.",
-            `<div class="dapp-row"><span>Comanda</span><span>${comanda}</span></div>
-             <div class="dapp-row"><span>Fecha</span><span>${fechaLarga(0)} · ${ahora()}</span></div>
-             <div class="dapp-row"><span>Forma de pago</span><span>${pago}</span></div>
-             ${personas>1?`<div class="dapp-row"><span>Dividida entre</span><span>${personas} personas</span></div>`:""}
-             <div class="dapp-row total"><span>Total</span><span>${money(totalCuenta())}</span></div>`);
-        };
-      }
-    }
-    withLoading(root, paint);
-  }
-},
-
-/* ============ 2. FERRETERÍA ============
-   Catálogo con SKU y existencias → cotización con descuentos por volumen →
-   historial que se puede convertir en venta.
-   Realismo: escalones de descuento reales, vigencia calculada, clientes
-   frecuentes, estados de existencia y unidades de venta. */
-ferreteria:{
-  title:"Cotizador de obra",
-  render(root){
-    const cats = {
-      "Construcción":[
-        {n:"Cemento gris 50 kg",d:"CPC 30R · Cruz Azul",sku:"FER-1021",st:64,u:"bulto",p:238},
-        {n:"Varilla 3/8\"",d:"12 m · corrugada",sku:"FER-1088",st:120,u:"pieza",p:165},
-        {n:"Arena cernida",d:"Bulto 50 kg",sku:"FER-1130",st:40,u:"bulto",p:85},
-        {n:"Block 15×20×40",d:"Hueco, gris",sku:"FER-1207",st:500,u:"pieza",p:18}
-      ],
-      "Plomería":[
-        {n:"Tubo PVC 4\"",d:"Tramo 6 m · sanitario",sku:"PLO-2010",st:26,u:"tramo",p:210},
-        {n:"Llave de paso 1/2\"",d:"Bronce · nacional",sku:"PLO-2054",st:8,u:"pieza",p:145},
-        {n:"Cinta teflón",d:"Rollo 10 m",sku:"PLO-2101",st:90,u:"rollo",p:12},
-        {n:"Codo PVC 90° 4\"",d:"Sanitario",sku:"PLO-2144",st:0,u:"pieza",p:34}
-      ],
-      "Eléctrico":[
-        {n:"Cable THW cal. 12",d:"Por metro · cobre",sku:"ELE-3005",st:300,u:"metro",p:14},
-        {n:"Contacto doble",d:"Con placa blanca",sku:"ELE-3040",st:45,u:"pieza",p:48},
-        {n:"Pastilla térmica 20 A",d:"1 polo · empotrable",sku:"ELE-3077",st:22,u:"pieza",p:135}
-      ],
-      "Pintura":[
-        {n:"Vinílica 19 L blanco",d:"Mate lavable",sku:"PIN-4001",st:12,u:"cubeta",p:1150},
-        {n:"Esmalte 1 L negro",d:"Brillante",sku:"PIN-4022",st:30,u:"lata",p:185},
-        {n:"Brocha 4\"",d:"Cerda natural",sku:"PIN-4103",st:55,u:"pieza",p:65}
-      ]
-    };
-    const all = Object.values(cats).flat();
-    const find = n => all.find(x=>x.n===n);
-
-    /* Escalones reales de descuento por volumen */
-    const ESCALONES = [[20000,8],[8000,5],[3000,3]];
-    const frecuentes = ["Constructora Hernández","Ing. Salas","Maestro Beto (albañilería)","Mantenimiento Plaza Norte"];
-
-    let qty={}, cat="Construcción", q="", mainTab="Catálogo", view="cat";
-    let cliente="", obra="", folio=null;
-    let historial = [
-      {folio:"COT-"+new Date().getFullYear()+"-0088",fecha:fechaCorta(-9),cliente:"Constructora Hernández",total:14890,status:"Aceptada"},
-      {folio:"COT-"+new Date().getFullYear()+"-0084",fecha:fechaCorta(-13),cliente:"Ing. Salas",total:3210,status:"Pendiente"}
-    ];
-
-    const subtotal = () => Object.entries(qty).reduce((s,[k,v])=>s+find(k).p*v,0);
-    const count = () => Object.values(qty).reduce((a,b)=>a+b,0);
-    const escalon = () => ESCALONES.find(([monto])=>subtotal()>=monto);
-    const pctDesc = () => escalon() ? escalon()[1] : 0;
-    const desc = () => Math.round(subtotal()*pctDesc()/100);
-    const iva = () => Math.round((subtotal()-desc())*0.16);
-    const granTotal = () => subtotal()-desc()+iva();
-    const siguiente = () => [...ESCALONES].reverse().find(([monto])=>subtotal()<monto);
-    const badge = s => s==="Aceptada"?"green":s==="Pendiente"?"amber":s==="Enviada"?"violet":"green";
-    const existencia = it => it.st===0
-      ? `<span class="dapp-badge red">Sobre pedido</span>`
-      : it.st<=10 ? `<span class="dapp-badge amber">Quedan ${it.st}</span>`
-      : `${it.st} ${it.u}s disp.`;
-
-    function enviar(medio){
-      if(!cliente.trim()){ toast("Escribe o elige el cliente","⚠️"); keepCaret(root,"#cli"); return; }
-      historial.unshift({folio,fecha:"hoy",cliente:cliente.trim(),total:granTotal(),status:"Enviada"});
-      const resumen = `<div class="dapp-row"><span>Folio</span><span>${folio}</span></div>
-        <div class="dapp-row"><span>Cliente</span><span>${cliente.trim()}</span></div>
-        ${obra.trim()?`<div class="dapp-row"><span>Obra</span><span>${obra.trim()}</span></div>`:""}
-        <div class="dapp-row"><span>Vigencia</span><span>hasta el ${fechaCorta(15)}</span></div>
-        <div class="dapp-row total"><span>Total</span><span>${money(granTotal())}</span></div>`;
-      toast(folio+" enviada por "+medio,"✅");
-      successScreen(root, medio==="WhatsApp"?"📲":"📄", "Cotización enviada",
-        medio==="WhatsApp"
-          ? "Le llegó al cliente por WhatsApp con el desglose y los precios vigentes."
-          : "El PDF quedó guardado y listo para imprimir o mandar por correo.",
-        resumen);
-      qty={}; view="cat"; mainTab="Cotizaciones"; cliente=""; obra="";
-    }
-
-    function paint(){
-      if(view==="quote"){
-        root.innerHTML =
-          appHead("📄","Cotización "+folio,"Vigencia hasta el "+fechaCorta(15)) + `
-          <div class="dapp-body">
-            <label class="dapp-label" for="cli">Cliente *</label>
-            <input class="dapp-input" id="cli" placeholder="Nombre del cliente o de la obra" value="${cliente}">
-            <div class="dapp-chips" style="margin:-4px 0 12px">
-              ${frecuentes.map(f=>`<button class="chip ${cliente===f?'on':''}" data-cliente="${f}">${f}</button>`).join("")}
-            </div>
-            <label class="dapp-label" for="obra">Obra o referencia</label>
-            <input class="dapp-input" id="obra" placeholder="Ej. Av. Juárez 214, 2a etapa" value="${obra}">
-            <div class="dapp-sheet">
-              ${Object.entries(qty).map(([k,v])=>`
-                <div class="dapp-row"><span>${v} ${find(k).u}${v>1?"s":""} · ${k}<small>${find(k).sku}</small></span><span>${money(find(k).p*v)}</span></div>`).join("")}
-              <div class="dapp-row"><span>Subtotal</span><span>${money(subtotal())}</span></div>
-              ${pctDesc()>0?`<div class="dapp-row is-ok"><span>Descuento por volumen (${pctDesc()}%)</span><span>−${money(desc())}</span></div>`:""}
-              <div class="dapp-row"><span>IVA 16%</span><span>${money(iva())}</span></div>
-              <div class="dapp-row total"><span>Total</span><span>${money(granTotal())}</span></div>
-            </div>
-            <p class="dapp-note">Queda en el historial y se convierte en venta con un clic, sin volver a capturar nada.</p>
-          </div>
-          <div class="dapp-bar">
-            <button class="dapp-tab" id="back">← Editar</button>
-            <div class="dapp-bar-actions">
-              <button class="dapp-tab" id="pdf">📄 PDF</button>
-              <button class="dapp-cta" id="send">Enviar por WhatsApp</button>
-            </div>
-          </div>`;
-        root.querySelector("#cli").oninput=e=>cliente=e.target.value;
-        root.querySelector("#obra").oninput=e=>obra=e.target.value;
-        root.querySelectorAll("[data-cliente]").forEach(b=>b.onclick=()=>{cliente=b.dataset.cliente;paint();});
-        root.querySelector("#back").onclick=()=>{view="cat";paint();};
-        root.querySelector("#send").onclick=()=>enviar("WhatsApp");
-        root.querySelector("#pdf").onclick=()=>enviar("PDF");
+        root.querySelector("#back").onclick=()=>{view="lista";paint();};
+        root.querySelector("#avisar").onclick=()=>toast("Ventas recibió el costo landed y la fecha de llegada","📲");
         return;
       }
-
-      const list = q ? all.filter(it=>(it.n+" "+it.sku+" "+it.d).toLowerCase().includes(q.toLowerCase())) : cats[cat];
-      const sig = siguiente();
-      root.innerHTML =
-        appHead("🔩","Ferretería El Tornillo","Cotizador para obra y contratistas") + `
-        <div class="dapp-body">
-          <div class="dapp-tabs">${["Catálogo","Cotizaciones"].map(t=>
-            `<button class="dapp-tab ${t===mainTab?'active':''}" data-main="${t}">${t}${t==="Cotizaciones"?" ("+historial.length+")":""}</button>`).join("")}</div>
-          ${mainTab==="Catálogo"?`
-            <input class="dapp-search" id="q" placeholder="🔍 Producto, medida o código (FER-1021)…" value="${q}" aria-label="Buscar producto">
-            ${q?"":`<div class="dapp-chips">${Object.keys(cats).map(c=>
-              `<button class="chip ${c===cat?'on':''}" data-cat="${c}">${c}</button>`).join("")}</div>`}
-            ${pctDesc()>0?`<div class="dapp-alert blue"><span>🎉</span>
-              <div><b>Descuento del ${pctDesc()}% aplicado</b><span>El cliente ahorra ${money(desc())} en esta cotización</span></div></div>`:""}
-            ${sig&&subtotal()>0?`<div class="dapp-alert amber"><span>💡</span>
-              <div><b>Faltan ${money(sig[0]-subtotal())} para el ${sig[1]}%</b><span>Escalones por volumen: $3,000 → 3% · $8,000 → 5% · $20,000 → 8%</span></div></div>`:""}
-            ${list.length?list.map(it=>itemRow({
-              mute: it.st===0,
+      if(view==="oc"){
+        const sub = Object.entries(oc).reduce((s,[k,v])=>s+catalogo.find(c=>c.n===k).p*v,0);
+        root.innerHTML =
+          appHead("📝","Nueva orden de compra","Al proveedor · partidas en USD") + `
+          <div class="dapp-body">
+            <div class="dapp-label">Proveedor</div>
+            <div class="dapp-chips">${provs.map(p=>`<button class="chip ${p===provOC?'on':''}" data-prov="${p}">${p}</button>`).join("")}</div>
+            <div class="dapp-label">Incoterm</div>
+            <div class="dapp-chips">${["FOB","CIF","EXW"].map(i=>`<button class="chip ${i===incoterm?'on':''}" data-inc="${i}">${i}</button>`).join("")}</div>
+            ${catalogo.map(it=>itemRow({
               title: it.n,
-              meta: `${it.d} · <b class="sku">${it.sku}</b> · ${existencia(it)}`,
-              side: `<span class="price">${money(it.p)}<i>/${it.u}</i></span>` + stepper(it.n, qty[it.n]||0)
-            })).join(""):`<div class="dapp-empty"><span>📦</span><b>Sin resultados para "${q}"</b>
-              <p>Busca por nombre, medida o código de producto.</p></div>`}`
-          : historial.length ? historial.map(h=>`
+              meta: `${usd(it.p)} c/u · mínimo ${miles(it.moq)} pz`,
+              side: stepper(it.n, oc[it.n]||0)
+            })).join("")}
+            <p class="dapp-note">Las cantidades suben de 100 en 100 para taladros y esmeriles, de 500 en rodamientos y bandas y de 1 en bombas, como vende cada proveedor.</p>
+          </div>
+          <div class="dapp-bar">
+            <button class="dapp-tab" id="back">← Embarques</button>
+            <div class="dapp-total"><span>Subtotal ${incoterm}</span><b>${usd(sub)}</b></div>
+            <button class="dapp-cta" id="enviar" ${sub===0?"disabled":""}>Enviar OC</button>
+          </div>`;
+        root.querySelectorAll("[data-prov]").forEach(b=>b.onclick=()=>{provOC=b.dataset.prov;paint();});
+        root.querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{incoterm=b.dataset.inc;paint();});
+        const paso = n => n.startsWith("Bomba")?1:n.startsWith("Rodamiento")||n.startsWith("Banda")?500:100;
+        root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{const k=b.dataset.plus;oc[k]=(oc[k]||0)+paso(k);paint();});
+        root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{const k=b.dataset.minus;if(oc[k]){oc[k]=Math.max(0,oc[k]-paso(k));if(!oc[k])delete oc[k];}paint();});
+        root.querySelector("#back").onclick=()=>{view="lista";paint();};
+        root.querySelector("#enviar").onclick=()=>{
+          const folio = nuevoFolio("OC");
+          const pz = Object.values(oc).reduce((a,b)=>a+b,0);
+          toast("OC "+folio+" enviada a "+provOC,"✅");
+          successScreen(root,"📝","Orden de compra enviada",
+            "El proveedor la recibe por correo con la proforma; en cuanto confirme, el embarque aparece en la lista con su ETA.",
+            `<div class="dapp-row"><span>Folio</span><span>${folio}</span></div>
+             <div class="dapp-row"><span>Proveedor</span><span>${provOC}</span></div>
+             <div class="dapp-row"><span>Incoterm</span><span>${incoterm}</span></div>
+             <div class="dapp-row"><span>Piezas</span><span>${miles(pz)}</span></div>
+             <div class="dapp-row"><span>Tránsito estimado</span><span>${provOC.includes("Houston")?"8 días":"34 días"}</span></div>
+             <div class="dapp-row total"><span>Total ${incoterm}</span><span>${usd(sub)}</span></div>`);
+          oc={}; view="lista";
+        };
+        return;
+      }
+      const lista = tab==="En tránsito"?abiertos():enBodega();
+      root.innerHTML =
+        appHead("🚢","Grupo Altamira","Importaciones · comercio exterior",`<button class="dapp-mini" id="nuevaOC">+ Orden de compra</button>`) + `
+        <div class="dapp-body">
+          <div class="stat-grid">
+            <div class="stat-card"><span>En tránsito</span><b>${abiertos().length}</b><em>${usd(fobTotal(abiertos()))}</em></div>
+            <div class="stat-card"><span>En aduana</span><b>${embarques.filter(e=>e.etapa===2).length}</b><em class="${embarques.some(e=>e.etapa===2)?"is-bad":""}">${embarques.some(e=>e.etapa===2)?"pedimento en curso":"ninguno"}</em></div>
+            <div class="stat-card"><span>TC hoy</span><b>${TC.toFixed(2)}</b><em>DOF</em></div>
+          </div>
+          <div class="dapp-tabs">${["En tránsito","En bodega"].map(t=>`<button class="dapp-tab ${t===tab?'active':''}" data-tab="${t}">${t} (${t==="En tránsito"?abiertos().length:enBodega().length})</button>`).join("")}</div>
+          ${lista.map(e=>itemRow({
+            emoji: e.etapa===4?"🏭":e.etapa===2?"🛃":"🚢",
+            title: `${e.id} ${tagEtapa(e)}`,
+            meta: `${e.desc} · ${miles(e.pz)} pz · ${e.prov}<br>${e.etapa===4?"Recibido completo":"ETA "+(e.eta===0?"hoy":e.eta===1?"mañana":fechaCorta(e.eta))} · ${e.oc}`,
+            side: `<button class="dapp-tab" data-ver="${e.id}">Ver</button>`
+          })).join("")}
+          <p class="dapp-note">Cada contenedor se actualiza con el aviso de la naviera y del agente aduanal: nadie llama a preguntar "¿ya llegó?".</p>
+        </div>`;
+      root.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;paint();});
+      root.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>{sel=embarques.find(e=>e.id===b.dataset.ver);view="detalle";paint();});
+      root.querySelector("#nuevaOC").onclick=()=>{view="oc";paint();};
+    }
+    function fobTotal(l){ return l.reduce((s,e)=>s+e.fob,0); }
+    withLoading(root, paint);
+  }
+},
+
+/* ============ 2. FLOTILLA ============
+   Torre de control de entregas: unidades en ruta, choferes, paradas con hora
+   prevista y real, evidencia de entrega y la vista del chofer. */
+flotilla:{
+  title:"Torre de control",
+  render(root){
+    let unidades = [
+      {u:"Unidad 14",chofer:"Beto Márquez",ruta:"Ruta Norte",estado:"en ruta",hechas:5,total:8,x:.62,y:.28,dx:.004,dy:.003,retraso:0,
+        paradas:[["Ferretería Industrial Garza","08:40","08:36"],["Maquinados del Norte","09:20","09:25"],["Grupo Acerero Apodaca","10:05","10:02"],["Bodega Santa Catarina","10:50","10:58"],["Plásticos Monterrey","11:30","11:27"],["Fundidora Escobedo","12:10",""],["Transformadores del Bajío","12:50",""],["Base","13:30",""]]},
+      {u:"Unidad 9",chofer:"Lupe Hernández",ruta:"Ruta Poniente",estado:"retrasado",hechas:3,total:7,x:.22,y:.55,dx:.003,dy:-.002,retraso:14,
+        paradas:[["Cementos Regionales","08:30","08:33"],["Aceros García","09:15","09:12"],["Maderas y Triplay SA","10:00","10:40"],["Industrias Lerma","10:45",""],["Envases del Centro","11:30",""],["Papelera San Rafael","12:15",""],["Base","13:00",""]]},
+      {u:"Unidad 21",chofer:"Carlos Ruiz",ruta:"Ruta Sur",estado:"entregando",hechas:6,total:6,x:.48,y:.72,dx:-.003,dy:.002,retraso:0,
+        paradas:[["Vidriera Guadalupe","08:20","08:18"],["Tornillería Juárez","09:00","08:55"],["Galvanizados SA","09:40","09:44"],["Grupo Vitro Planta 2","10:30","10:28"],["Empaques Nacionales","11:10","11:05"],["Base","12:00","11:52"]]},
+      {u:"Unidad 3",chofer:"Toño Salas",ruta:"Carga en base",estado:"en base",hechas:0,total:5,x:.85,y:.82,dx:0,dy:0,retraso:0,paradas:[]}
+    ];
+    let view="torre", sel=null, chofer=null, paso=null, etaMin=12;
+    const entregas = () => unidades.reduce((s,u)=>s+u.hechas,0);
+    const totales = () => unidades.reduce((s,u)=>s+u.total,0);
+    const badge = u => u.estado==="retrasado"?'<span class="dapp-badge red">Retraso '+u.retraso+' min</span>'
+      : u.estado==="en base"?'<span class="dapp-badge amber">En base</span>'
+      : u.estado==="entregando"?'<span class="dapp-badge green">Entregando</span>':'<span class="dapp-badge violet">En ruta</span>';
+
+    /* Las unidades se mueven en el mapa y el reloj del chofer corre */
+    dEvery(()=>{
+      unidades.forEach(u=>{ if(u.estado==="en base") return;
+        u.x=Math.min(.95,Math.max(.05,u.x+u.dx)); u.y=Math.min(.95,Math.max(.05,u.y+u.dy));
+        if(u.x<=.05||u.x>=.95) u.dx*=-1; if(u.y<=.05||u.y>=.95) u.dy*=-1; });
+      root.querySelectorAll("[data-pin]").forEach(p=>{const u=unidades.find(x=>x.u===p.dataset.pin); if(u){p.style.left=(u.x*100)+"%";p.style.top=(u.y*100)+"%";}});
+    },900);
+    dEvery(()=>{ if(etaMin>1) etaMin--; const el=root.querySelector("#etaMin"); if(el) el.textContent=etaMin+" min"; },4000);
+    dLater(()=>{ toast("Unidad 9 confirmó la parada 4 · retraso recuperado","✅"); const u=unidades[1]; u.estado="en ruta"; u.retraso=0; u.hechas=4; u.paradas[3][2]=ahora(); if(view==="torre") paint(); },9000);
+
+    function mapa(){
+      return `<div class="fleet-map" aria-hidden="true">
+        ${unidades.map(u=>`<span class="fleet-pin ${u.estado.replace(" ","-")}" data-pin="${u.u}" style="left:${u.x*100}%;top:${u.y*100}%"><i>${u.u.replace("Unidad ","")}</i></span>`).join("")}
+        <b class="fleet-base">Base</b>
+      </div>`;
+    }
+
+    function paint(){
+      if(view==="unidad" && sel){
+        const u = sel;
+        root.innerHTML =
+          appHead("🚛",u.u+" · "+u.chofer,u.ruta+" · "+u.hechas+" de "+u.total+" paradas") + `
+          <div class="dapp-body">
             <div class="dapp-card">
-              <div class="dapp-row" style="padding:0 0 4px"><span><b>${h.folio}</b> · ${h.fecha}</span>
-                <span class="dapp-badge ${badge(h.status)}">${h.status}</span></div>
-              <div class="dapp-row" style="padding:0"><span class="muted">${h.cliente}</span><span><b>${money(h.total)}</b></span></div>
-            </div>`).join("")
-          : `<div class="dapp-empty"><span>📄</span><b>Todavía no hay cotizaciones</b><p>Arma una desde el catálogo.</p></div>`}
-        </div>
-        ${mainTab==="Catálogo"?`<div class="dapp-bar">
-          <div class="dapp-total"><span>${count()} ${count()===1?"artículo":"artículos"}</span><b>${money(subtotal())}</b></div>
-          <button class="dapp-cta" id="goQuote" ${count()===0?"disabled":""}>Cotizar</button>
-        </div>`:""}`;
-      root.querySelectorAll("[data-main]").forEach(b=>b.onclick=()=>{mainTab=b.dataset.main;paint();});
-      const inp = root.querySelector("#q");
-      if(inp) inp.oninput=e=>{q=e.target.value;paint();keepCaret(root,"#q");};
-      root.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{cat=b.dataset.cat;paint();});
-      root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{qty[b.dataset.plus]=(qty[b.dataset.plus]||0)+1;paint();});
-      root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{
-        const k=b.dataset.minus; if(qty[k]){qty[k]--; if(!qty[k])delete qty[k];} paint();});
-      const go=root.querySelector("#goQuote");
-      if(go) go.onclick=()=>{folio=nuevoFolio("COT");view="quote";paint();};
+              <div class="dapp-row" style="padding:0"><span><b>Avance de la ruta</b></span><span><b>${Math.round(u.hechas/u.total*100)}%</b></span></div>
+              <div class="credit-bar"><div class="credit-fill${u.estado==="retrasado"?" is-hot":""}" style="transform:scaleX(${u.hechas/u.total})"></div></div>
+              <span class="muted small">${u.estado==="retrasado"?"Va "+u.retraso+" min tarde · el cliente de la siguiente parada ya fue avisado":"En tiempo · siguiente parada en "+etaMin+" min"}</span>
+            </div>
+            <div class="dapp-timeline">
+              ${u.paradas.map(([n,prev,real],i)=>`<div class="tl-step ${real?"done":i===u.hechas?"now":""}">
+                <div class="tl-dot">${real?"✓":i===u.hechas?"●":""}</div>
+                <div><b>${n}</b><span>Prevista ${prev}${real?" · llegó "+real+(real>prev?' <span class="dapp-badge amber">tarde</span>':' <span class="dapp-badge green">a tiempo</span>'):""}${real&&n!=="Base"?" · 📷 foto · ✍️ firma":""}</span></div>
+              </div>`).join("")}
+            </div>
+          </div>
+          <div class="dapp-bar">
+            <button class="dapp-tab" id="back">← Torre</button>
+            <button class="dapp-cta" id="modoChofer">📱 Ver como el chofer</button>
+          </div>`;
+        root.querySelector("#back").onclick=()=>{view="torre";paint();};
+        root.querySelector("#modoChofer").onclick=()=>{chofer=u;paso=0;view="chofer";paint();};
+        return;
+      }
+      if(view==="chofer" && chofer){
+        const u = chofer, i = u.hechas, [n,prev] = u.paradas[i]||["Base","—"];
+        root.innerHTML =
+          appHead("📱","App del chofer",u.chofer+" · "+u.u) + `
+          <div class="dapp-body">
+            <div class="dapp-countdown">
+              <div><span>Siguiente parada</span><b style="font-size:1.25rem">${n}</b></div>
+              <span class="dapp-badge violet" id="etaMin">${etaMin} min</span>
+            </div>
+            <div class="dapp-card">
+              <div class="dapp-row"><span class="muted">Ventana de entrega</span><span>${prev} – ${horaMas(45).slice(0,5)}</span></div>
+              <div class="dapp-row"><span class="muted">Contacto en sitio</span><span>Recepción · ext. 204</span></div>
+              <div class="dapp-row"><span class="muted">Carga</span><span>6 tarimas · 2,400 kg</span></div>
+            </div>
+            ${paso===0?`<button class="dapp-cta full" id="llegue">📍 Llegué al sitio</button>`
+            :paso===1?`<div class="dapp-label">Evidencia de entrega</div>
+              <button class="dapp-repeat" id="foto">📷 Tomar foto de la carga entregada<small>Se guarda con hora y ubicación GPS</small></button>
+              <button class="dapp-repeat" id="firma">✍️ Firma de quien recibe<small>En la pantalla del teléfono</small></button>`
+            :`<div class="dapp-alert blue"><span class="ico">✅</span><div class="body"><b>Entrega registrada a las ${ahora()}</b><span>Foto, firma y GPS ya están en la torre de control y en el portal del cliente.</span></div></div>
+              <button class="dapp-cta full" id="siguiente">Ir a la siguiente parada →</button>`}
+            <p class="dapp-note">Sin llamadas: la torre ve cada parada en el momento, y el cliente recibe la evidencia por WhatsApp.</p>
+          </div>
+          <div class="dapp-bar"><button class="dapp-tab" id="back">← ${u.u}</button></div>`;
+        root.querySelector("#back").onclick=()=>{sel=u;view="unidad";paint();};
+        const l=root.querySelector("#llegue"); if(l) l.onclick=()=>{paso=1;toast("Llegada registrada · "+ahora(),"📍");paint();};
+        let evid = 0;
+        const f=root.querySelector("#foto"), fi=root.querySelector("#firma");
+        const listo=()=>{ if(evid>=2){ u.paradas[i][2]=ahora(); u.hechas=Math.min(u.total,u.hechas+1); paso=2; toast("Entrega confirmada","✅"); paint(); } };
+        if(f) f.onclick=()=>{ if(!f.classList.contains("is-done")){ f.classList.add("is-done"); f.querySelector("small").textContent="Foto guardada · "+ahora(); evid++; listo(); } };
+        if(fi) fi.onclick=()=>{ if(!fi.classList.contains("is-done")){ fi.classList.add("is-done"); fi.querySelector("small").textContent="Firmó: recepción · "+ahora(); evid++; listo(); } };
+        const sg=root.querySelector("#siguiente"); if(sg) sg.onclick=()=>{paso=0;etaMin=9+Math.floor(Math.random()*9);paint();};
+        return;
+      }
+      root.innerHTML =
+        appHead("🚛","Transportes Río Bravo","Torre de control · "+fechaLarga(0)) + `
+        <div class="dapp-body">
+          <div class="stat-grid">
+            <div class="stat-card"><span>Entregas</span><b>${entregas()}/${totales()}</b><em>hoy</em></div>
+            <div class="stat-card"><span>En ruta</span><b>${unidades.filter(u=>u.estado!=="en base").length}</b><em>unidades</em></div>
+            <div class="stat-card"><span>Retrasos</span><b>${unidades.filter(u=>u.estado==="retrasado").length}</b><em class="${unidades.some(u=>u.estado==="retrasado")?"is-bad":""}">${unidades.some(u=>u.estado==="retrasado")?"cliente avisado":"ninguno"}</em></div>
+          </div>
+          ${mapa()}
+          ${unidades.map(u=>itemRow({
+            emoji: u.estado==="en base"?"🏭":"🚛",
+            title: `${u.u} ${badge(u)}`,
+            meta: `${u.chofer} · ${u.ruta}${u.total?" · "+u.hechas+"/"+u.total+" paradas":""}`,
+            side: `<button class="dapp-tab" data-ver="${u.u}" ${u.estado==="en base"?"disabled":""}>Ver ruta</button>`
+          })).join("")}
+          <p class="dapp-note">La posición viene del celular del chofer cada 30 s; las alertas de retraso se calculan contra la ventana de cada cliente.</p>
+        </div>`;
+      root.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>{sel=unidades.find(u=>u.u===b.dataset.ver);view="unidad";paint();});
     }
     withLoading(root, paint);
   }
 },
 
-/* ============ 3. FARMACIA ============
-   Panel del mostrador: ventas del día, caducidades, pedido sugerido y
-   clientes de tratamiento.
-   Realismo: fechas de caducidad calculadas, lotes, dos droguerías con
-   precios y tiempos distintos, y la gráfica de la semana. */
-farmacia:{
-  title:"Panel de farmacia",
+/* ============ 3. ALMACÉN ============
+   Inventario por ubicación y lote, surtido y recepción con escáner, y el
+   reorden que se dispara solo al tocar el mínimo. */
+almacen:{
+  title:"Almacén e inventario",
   render(root){
-    let tab = "Alertas", qc = "", prov = "Droguería Nacional";
-
-    let alerts = [
-      {tipo:"red",icon:"⏰",t:"Caduca el "+fechaCorta(12),d:"Amoxicilina 500 mg · lote L-4471 · 24 cajas en anaquel B3",accion:"Devolver a droguería",done:false},
-      {tipo:"red",icon:"⏰",t:"Caduca el "+fechaCorta(20),d:"Jarabe infantil ambroxol · lote L-2231 · 9 piezas",accion:"Marcar para remate",done:false},
-      {tipo:"amber",icon:"📦",t:"Stock bajo: Paracetamol 500 mg",d:"Quedan 6 cajas · se venden ~4 al día · alcanza para 1 día y medio",accion:"Agregar al pedido",done:false},
-      {tipo:"amber",icon:"📦",t:"Stock bajo: Suero oral",d:"Quedan 3 piezas · se venden ~2 al día",accion:"Agregar al pedido",done:false},
-      {tipo:"amber",icon:"📦",t:"Stock bajo: Vitamina C 1 g",d:"Quedan 5 tubos · temporada de gripa, la demanda subió 40%",accion:"Agregar al pedido",done:false}
+    let items = [
+      {sku:"44-118",n:"Rodamiento 6205-2RS",ub:"A-07-2",hay:320,min:150,max:800,u:"pz",lote:"L-2609",prov:"Ningbo Steelworks"},
+      {sku:"44-131",n:"Banda en V A-42",ub:"A-07-3",hay:96,min:120,max:600,u:"pz",lote:"L-2588",prov:"Ningbo Steelworks"},
+      {sku:"51-204",n:"Taladro percutor 1/2\"",ub:"B-02-1",hay:48,min:60,max:300,u:"pz",lote:"L-2611",prov:"Shenzhen Hengli"},
+      {sku:"51-207",n:"Esmeril angular 4 1/2\"",ub:"B-02-2",hay:210,min:60,max:300,u:"pz",lote:"L-2611",prov:"Shenzhen Hengli"},
+      {sku:"70-015",n:"Bomba centrífuga 5 HP",ub:"C-01-1",hay:7,min:4,max:20,u:"pz",lote:"L-2602",prov:"Houston Pump"},
+      {sku:"33-402",n:"Guante nitrilo T-9 (caja)",ub:"D-11-4",hay:12,min:40,max:200,u:"caja",lote:"L-2597",prov:"Seguridad Total"},
+      {sku:"33-410",n:"Casco industrial clase E",ub:"D-11-2",hay:0,min:25,max:120,u:"pz",lote:"—",prov:"Seguridad Total"}
     ];
-
-    /* Cada droguería tiene su propio precio y su propio tiempo de entrega:
-       es la decisión real que toma el dueño cada mañana. */
-    const provs = {
-      "Droguería Nacional":{factor:1,    entrega:()=>"mañana "+fechaCorta(1)+" antes de las 9:00 am", envio:"Sin costo desde $1,500"},
-      "Farmapronto":       {factor:1.06, entrega:()=>"hoy "+fechaCorta(0)+" antes de las 6:00 pm",   envio:"Envío $120"}
-    };
-    let pedido = [
-      {n:"Paracetamol 500 mg c/10",sug:20,q:20,p:12.5},
-      {n:"Suero oral 625 ml",sug:12,q:12,p:18},
-      {n:"Ibuprofeno 400 mg c/10",sug:15,q:15,p:15.8},
-      {n:"Vitamina C 1 g c/10",sug:10,q:10,p:22}
-    ];
-    let clientes = [
-      {n:"Don Jorge Ramírez",tel:"953 118 2201",trat:"Metformina 850 mg",dias:30,sent:false},
-      {n:"Sra. Carmen López",tel:"953 105 7742",trat:"Losartán 50 mg",dias:28,sent:false},
-      {n:"Familia Torres",tel:"953 132 0186",trat:"Vitaminas infantiles",dias:21,sent:false},
-      {n:"Lic. Paola Rueda",tel:"953 121 8830",trat:"Omeprazol 20 mg",dias:26,sent:false}
-    ];
-
-    const precio = it => Math.round(it.p*provs[prov].factor*100)/100;
-    const totalPed = () => pedido.reduce((s,it)=>s+it.q*precio(it),0);
-    const piezas = () => pedido.reduce((s,it)=>s+it.q,0);
-    const pendientes = () => alerts.filter(a=>!a.done);
-    const iniciales = n => n.replace(/^(Don|Sra\.|Lic\.|Familia)\s+/,"").split(" ").map(w=>w[0]).slice(0,2).join("");
+    let surtido = {folio:"OS-"+new Date().getFullYear()+"-0417",cliente:"Maquinados del Norte",lineas:[["44-118",40,false],["51-207",6,false],["33-402",4,false],["70-015",1,false]]};
+    let recepcion = {oc:"OC-2026-0301",prov:"Houston Pump Supply",lineas:[["70-015",24,24],["44-118",0,0]]};
+    let tab="Existencias", q="", sel=null, view="lista";
+    const find = s => items.find(i=>i.sku===s);
+    const bajos = () => items.filter(i=>i.hay<i.min);
+    const estado = i => i.hay===0?'<span class="dapp-badge red">Agotado</span>':i.hay<i.min?'<span class="dapp-badge amber">Bajo mínimo</span>':'<span class="dapp-badge green">OK</span>';
+    const ocupacion = () => Math.round(items.reduce((s,i)=>s+i.hay/i.max,0)/items.length*100);
 
     function paint(){
-      const listaC = qc ? clientes.filter(c=>(c.n+" "+c.trat).toLowerCase().includes(qc.toLowerCase())) : clientes;
+      if(view==="item" && sel){
+        const i = sel;
+        root.innerHTML =
+          appHead("📦",i.n,"SKU "+i.sku+" · ubicación "+i.ub) + `
+          <div class="dapp-body">
+            <div class="stat-grid">
+              <div class="stat-card"><span>Existencia</span><b>${i.hay}</b><em>${i.u}</em></div>
+              <div class="stat-card"><span>Mínimo</span><b>${i.min}</b><em>reorden</em></div>
+              <div class="stat-card"><span>Máximo</span><b>${i.max}</b><em>capacidad</em></div>
+            </div>
+            <div class="dapp-card">
+              <div class="dapp-row" style="padding:0"><span><b>Nivel</b></span><span>${estado(i)}</span></div>
+              <div class="credit-bar"><div class="credit-fill${i.hay<i.min?" is-hot":""}" style="transform:scaleX(${Math.min(1,i.hay/i.max)})"></div></div>
+              <span class="muted small">Lote ${i.lote} · proveedor ${i.prov}</span>
+            </div>
+            <div class="dapp-label">Últimos movimientos</div>
+            <div class="dapp-sheet">
+              <div class="dapp-row"><span>Salida · OS-${new Date().getFullYear()}-0412 · ${fechaCorta(-1)}</span><span class="is-bad">−${Math.max(2,Math.round(i.min*0.2))}</span></div>
+              <div class="dapp-row"><span>Entrada · ${i.prov.split(" ")[0]} · ${fechaCorta(-6)}</span><span class="is-ok">+${Math.round(i.max*0.4)}</span></div>
+              <div class="dapp-row"><span>Conteo cíclico · ${fechaCorta(-9)}</span><span>sin diferencia</span></div>
+            </div>
+            ${i.hay<i.min?`<div class="dapp-alert amber"><span class="ico">🤖</span><div class="body"><b>Reorden sugerido: ${i.max-i.hay} ${i.u}</b><span>Para volver al máximo · ${i.prov} entrega en ${i.prov.includes("Houston")?"8":"34"} días</span>
+              <div class="approve-btns"><button class="btn-approve yes" id="reordenar">Generar OC ✓</button></div></div></div>`:""}
+          </div>
+          <div class="dapp-bar"><button class="dapp-tab" id="back">← Existencias</button><button class="dapp-tab" id="conteo">🔢 Conteo cíclico</button></div>`;
+        root.querySelector("#back").onclick=()=>{view="lista";paint();};
+        root.querySelector("#conteo").onclick=()=>toast("Conteo programado para mañana 7:00 · "+i.ub,"🔢");
+        const r=root.querySelector("#reordenar"); if(r) r.onclick=()=>{ const f=nuevoFolio("OC"); toast(f+" generada a "+i.prov,"📝"); i.min=i.min; sel=null; view="lista"; paint(); };
+        return;
+      }
+      const lista = q ? items.filter(i=>(i.sku+" "+i.n+" "+i.ub).toLowerCase().includes(q.toLowerCase())) : items;
+      const pend = surtido.lineas.filter(l=>!l[2]).length;
       root.innerHTML =
-        appHead("💊","Farmacia San Miguel","Panel de mostrador · "+fechaLarga(0)) + `
+        appHead("📦","Almacén Central","Industrias Monterrey · nave 2") + `
         <div class="dapp-body">
           <div class="stat-grid">
-            <div class="stat-card"><span>Ventas</span><b>$8,430</b><em>▲ 12%</em></div>
-            <div class="stat-card"><span>Tickets</span><b>46</b><em>▲ 5</em></div>
-            <div class="stat-card"><span>Caducan</span><b>${pendientes().filter(a=>a.tipo==="red").length}</b><em class="is-bad">lotes</em></div>
+            <div class="stat-card"><span>Exactitud</span><b>99.2%</b><em>último conteo</em></div>
+            <div class="stat-card"><span>Ocupación</span><b>${ocupacion()}%</b><em>de capacidad</em></div>
+            <div class="stat-card"><span>Bajo mínimo</span><b>${bajos().length}</b><em class="${bajos().length?"is-bad":""}">SKU</em></div>
           </div>
-          <div class="dapp-card">
-            <b>Ventas de la semana</b>
-            <span class="muted small" style="display:block">Últimos 7 días · cierre de caja 8:00 pm</span>
-            ${sparkline([6200,7100,5400,6800,7900,9100,8430],["L","M","M","J","V","S","D"])}
-          </div>
-          <div class="dapp-tabs">${["Alertas","Pedido","Clientes"].map(t=>
-            `<button class="dapp-tab ${t===tab?'active':''}" data-tab="${t}">${t}${t==="Alertas"&&pendientes().length?" ("+pendientes().length+")":""}</button>`).join("")}</div>
-
-          ${tab==="Alertas" ? (pendientes().length ? alerts.map((a,i)=>a.done?"":`
-            <div class="dapp-alert ${a.tipo}">
-              <span class="ico">${a.icon}</span>
-              <div class="body"><b>${a.t}</b><span>${a.d}</span>
-                <div class="approve-btns"><button class="btn-approve yes" data-ok="${i}">${a.accion} ✓</button></div>
-              </div>
-            </div>`).join("")
-            : `<div class="dapp-empty"><span>🌟</span><b>Todo atendido</b>
-               <p>El sistema revisa caducidades y existencias cada noche y te deja aquí solo lo que necesita tu decisión.</p></div>`)
-
-          : tab==="Pedido" ? `
-            <div class="dapp-label">Droguería</div>
-            <div class="dapp-chips">
-              ${Object.keys(provs).map(p=>
-                `<button class="chip ${p===prov?'on':''}" data-prov="${p}">${p}</button>`).join("")}
-            </div>
-            <div class="dapp-alert blue"><span class="ico">🤖</span>
-              <div class="body"><b>Pedido sugerido según tu rotación</b>
-              <span>Calculado con las ventas de los últimos 30 días · entrega ${provs[prov].entrega()} · ${provs[prov].envio}</span></div></div>
-            ${pedido.map((it,i)=>itemRow({
-              title: it.n,
-              meta: `Sugerido: ${it.sug} · ${money(precio(it))} c/u${prov==="Farmapronto"?' <span class="dapp-badge amber">+6%</span>':""}`,
-              side: stepper(String(i), it.q)
-            })).join("")}
-            <div class="dapp-sheet">
-              <div class="dapp-row"><span>${piezas()} piezas</span><span>${money(totalPed())}</span></div>
-              <div class="dapp-row total"><span>Total del pedido</span><span>${money(totalPed())}</span></div>
-            </div>`
-
-          : `
-            <input class="dapp-search" id="qc" placeholder="🔍 Buscar cliente o tratamiento…" value="${qc}" aria-label="Buscar cliente">
-            ${listaC.length?listaC.map(c=>{const i=clientes.indexOf(c);return itemRow({
-              emoji: `<span class="avatar">${iniciales(c.n)}</span>`,
-              title: c.n,
-              meta: `${c.trat} · surtió hace ${c.dias} días · 📞 ${c.tel}`,
-              side: c.sent
-                ? `<span class="dapp-badge green">Enviado ✓</span>`
-                : `<button class="dapp-tab" data-rec="${i}">Recordar 📲</button>`
-            })}).join(""):`<div class="dapp-empty"><span>🔍</span><b>Sin coincidencias</b><p>Busca por nombre o por medicamento.</p></div>`}
-            <p class="dapp-note">El recordatorio sale con el nombre del cliente y su medicamento, no como mensaje masivo.</p>`}
+          <div class="dapp-tabs">${["Existencias","Surtido","Recepción"].map(t=>`<button class="dapp-tab ${t===tab?'active':''}" data-tab="${t}">${t}${t==="Surtido"&&pend?" ("+pend+")":""}</button>`).join("")}</div>
+          ${tab==="Existencias"?`
+            <input class="dapp-search" id="q" placeholder="📷 Escanea o escribe SKU, nombre o ubicación…" value="${q}" aria-label="Buscar en inventario">
+            ${lista.length?lista.map(i=>itemRow({
+              title:`${i.n} ${estado(i)}`,
+              meta:`<b class="sku">${i.sku}</b> · ${i.ub} · lote ${i.lote}`,
+              side:`<span class="price">${i.hay}<i>/${i.u}</i></span><button class="dapp-tab" data-ver="${i.sku}">Ver</button>`
+            })).join(""):`<div class="dapp-empty"><span>🔍</span><b>Sin resultados para "${q}"</b><p>Escanea el código o busca por ubicación (A-07-2).</p></div>`}`
+          :tab==="Surtido"?`
+            <div class="dapp-alert blue"><span class="ico">🗂️</span><div class="body"><b>${surtido.folio} · ${surtido.cliente}</b><span>${surtido.lineas.length} líneas ordenadas por pasillo para no dar vueltas</span></div></div>
+            ${surtido.lineas.map((l,ix)=>{const i=find(l[0]);return itemRow({
+              emoji:l[2]?"✅":"📍",
+              title:`${i.n}`,
+              meta:`Ir a <b class="sku">${i.ub}</b> · tomar ${l[1]} ${i.u} · quedan ${i.hay}`,
+              side:l[2]?'<span class="dapp-badge green">Tomado</span>':`<button class="dapp-tab" data-tomar="${ix}">Escanear ✓</button>`
+            });}).join("")}`
+          :`
+            <div class="dapp-alert blue"><span class="ico">🚚</span><div class="body"><b>${recepcion.oc} · ${recepcion.prov}</b><span>Contra la orden de compra: lo que no coincide se marca solo</span></div></div>
+            ${recepcion.lineas.map((l,ix)=>{const i=find(l[0]);return itemRow({
+              title:`${i.n}`,
+              meta:`Esperado <b>${l[1]||"no en OC"}</b> · recibido <b>${l[2]}</b>${l[1]&&l[2]!==l[1]?' <span class="dapp-badge amber">Discrepancia</span>':l[1]?' <span class="dapp-badge green">Coincide</span>':' <span class="dapp-badge red">No pedido</span>'}`,
+              side:stepper("r"+ix,l[2])
+            });}).join("")}`}
         </div>
-        ${tab==="Pedido"?`<div class="dapp-bar">
-          <div class="dapp-total"><span>${pedido.length} productos · ${piezas()} pzas</span><b>${money(totalPed())}</b></div>
-          <button class="dapp-cta" id="sendOrder">Enviar pedido</button>
-        </div>`:""}`;
-
+        ${tab==="Surtido"?`<div class="dapp-bar"><div class="dapp-total"><span>${surtido.lineas.length-pend} de ${surtido.lineas.length} líneas</span><b>${pend?"En proceso":"Listo"}</b></div><button class="dapp-cta" id="cerrarSurtido" ${pend?"disabled":""}>Cerrar surtido</button></div>`
+        :tab==="Recepción"?`<div class="dapp-bar"><div class="dapp-total"><span>${recepcion.lineas.reduce((s,l)=>s+l[2],0)} piezas</span><b>${recepcion.lineas.some(l=>l[1]&&l[2]!==l[1])?"Con discrepancias":"Completa"}</b></div><button class="dapp-cta" id="confirmarEntrada">Confirmar entrada</button></div>`:""}`;
       root.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;paint();});
-      root.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{
-        const a = alerts[+b.dataset.ok];
-        a.done=true; toast(a.accion+": listo","✔️"); paint();
-      });
-      root.querySelectorAll("[data-prov]").forEach(b=>b.onclick=()=>{prov=b.dataset.prov;paint();});
-      root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{pedido[+b.dataset.plus].q++;paint();});
-      root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{const it=pedido[+b.dataset.minus];if(it.q>0)it.q--;paint();});
-      root.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{
-        const c = clientes[+b.dataset.rec];
-        c.sent=true;
-        toast("WhatsApp a "+c.n.split(" ").slice(0,2).join(" "),"📲");
-        paint();
-      });
-      const qcInp = root.querySelector("#qc");
-      if(qcInp) qcInp.oninput=e=>{qc=e.target.value;paint();keepCaret(root,"#qc");};
-      const so = root.querySelector("#sendOrder");
-      if(so) so.onclick=()=>{
-        const folioPed = nuevoFolio("PED");
-        toast("Pedido "+folioPed+" enviado","🚚");
-        successScreen(root,"🚚","Pedido enviado a "+prov,
-          "Salió con las cantidades que ajustaste. Nadie capturó nada dos veces.",
-          `<div class="dapp-row"><span>Folio</span><span>${folioPed}</span></div>
-           <div class="dapp-row"><span>Piezas</span><span>${piezas()}</span></div>
-           <div class="dapp-row"><span>Entrega</span><span>${provs[prov].entrega()}</span></div>
-           <div class="dapp-row total"><span>Total</span><span>${money(totalPed())}</span></div>`);
+      const inp=root.querySelector("#q"); if(inp) inp.oninput=e=>{q=e.target.value;paint();keepCaret(root,"#q");};
+      root.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>{sel=find(b.dataset.ver);view="item";paint();});
+      root.querySelectorAll("[data-tomar]").forEach(b=>b.onclick=()=>{const l=surtido.lineas[+b.dataset.tomar];const i=find(l[0]);l[2]=true;i.hay=Math.max(0,i.hay-l[1]);toast(i.ub+" · "+l[1]+" "+i.u+" descontadas","📷");paint();});
+      root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{recepcion.lineas[+b.dataset.plus.slice(1)][2]++;paint();});
+      root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{const l=recepcion.lineas[+b.dataset.minus.slice(1)];if(l[2]>0)l[2]--;paint();});
+      const cs=root.querySelector("#cerrarSurtido"); if(cs) cs.onclick=()=>{toast(surtido.folio+" cerrado · embarque listo","✅");successScreen(root,"🗂️","Surtido cerrado",
+        "El embarque quedó listo en andén 2 y el cliente recibió el aviso con su guía.",
+        `<div class="dapp-row"><span>Orden</span><span>${surtido.folio}</span></div><div class="dapp-row"><span>Cliente</span><span>${surtido.cliente}</span></div><div class="dapp-row"><span>Líneas</span><span>${surtido.lineas.length}</span></div><div class="dapp-row total"><span>Tiempo de surtido</span><span>11 min</span></div>`);};
+      const ce=root.querySelector("#confirmarEntrada"); if(ce) ce.onclick=()=>{
+        recepcion.lineas.forEach(l=>{const i=find(l[0]);i.hay+=l[2];});
+        const disc=recepcion.lineas.filter(l=>l[1]&&l[2]!==l[1]).length;
+        toast("Entrada registrada · existencias actualizadas","✅");
+        successScreen(root,"🚚","Entrada registrada",
+          disc?"Las discrepancias ya le llegaron a compras para reclamarlas al proveedor.":"Todo coincidió con la orden de compra. Compras ya puede liberar el pago.",
+          `<div class="dapp-row"><span>OC</span><span>${recepcion.oc}</span></div><div class="dapp-row"><span>Proveedor</span><span>${recepcion.prov}</span></div><div class="dapp-row"><span>Discrepancias</span><span>${disc}</span></div><div class="dapp-row total"><span>Piezas en existencia</span><span>+${recepcion.lineas.reduce((s,l)=>s+l[2],0)}</span></div>`);};
+    }
+    withLoading(root, paint);
+  }
+},
+
+/* ============ 4. COTIZADOR AUTOMÁTICO ============
+   Cotización B2B en segundos: precio por nivel de cliente, descuento por
+   volumen, referencias en USD con el tipo de cambio del día, tiempo de
+   entrega según existencia, vigencia y seguimiento hasta el pedido. */
+cotizador:{
+  title:"Cotizador automático",
+  render(root){
+    const clientes = [
+      {n:"Constructora Vega",nivel:"Proyecto",desc:8},
+      {n:"Herrería Industrial MTY",nivel:"Distribuidor",desc:5},
+      {n:"Nuevo cliente",nivel:"Lista",desc:0}
+    ];
+    const cat = [
+      {n:"Viga IPR 8\" × 31 lb",u:"ton",p:24800,hay:42,ent:"inmediato"},
+      {n:"PTR 2\" × 2\" cal. 14",u:"ton",p:26900,hay:18,ent:"inmediato"},
+      {n:"Lámina galvanizada cal. 22",u:"ton",p:29400,hay:9,ent:"3 días"},
+      {n:"Tubería negra 4\" ced. 40",u:"ton",p:31200,hay:0,ent:"sobre pedido · 12 días"},
+      {n:"Varilla corrugada 3/8\"",u:"ton",p:17950,hay:120,ent:"inmediato"},
+      {n:"Placa A-36 1/2\" (ref. USD)",u:"ton",usd:1540,hay:6,ent:"3 días"}
+    ];
+    let cliente=clientes[1], qty={}, view="arma", folio=null, estado=0, pedido=null;
+    const precio = it => it.usd ? Math.round(it.usd*TC) : it.p;
+    const sub = () => Object.entries(qty).reduce((s,[k,v])=>s+precio(cat.find(c=>c.n===k))*v,0);
+    const ton = () => Object.values(qty).reduce((a,b)=>a+b,0);
+    const descNivel = () => Math.round(sub()*cliente.desc/100);
+    const descVol = () => ton()>=10 ? Math.round((sub()-descNivel())*0.03) : 0;
+    const iva = () => Math.round((sub()-descNivel()-descVol())*0.16);
+    const total = () => sub()-descNivel()-descVol()+iva();
+    const entrega = () => Object.keys(qty).some(k=>cat.find(c=>c.n===k).hay===0)?"12 días (hay partidas sobre pedido)":Object.keys(qty).some(k=>cat.find(c=>c.n===k).ent==="3 días")?"3 días hábiles":"inmediata";
+
+    function paint(){
+      if(view==="seguimiento"){
+        const pasos=[["Cotización generada","en 12 segundos · enviada por correo y WhatsApp"],["El cliente la abrió","con el enlace de seguimiento"],["Aceptada por el cliente","con firma electrónica"],["Convertida en pedido","sin volver a capturar nada"]];
+        root.innerHTML =
+          appHead("🧾","Cotización "+folio,cliente.n+" · vigente hasta el "+fechaCorta(7)) + `
+          <div class="dapp-body">
+            <div class="dapp-countdown"><div><span>Total cotizado</span><b style="font-size:1.5rem">${money(total())}</b></div><span class="dapp-badge violet">${["Enviada","Vista","Aceptada","Pedido"][estado]}</span></div>
+            <div class="dapp-timeline">
+              ${pasos.map(([p,s],i)=>`<div class="tl-step ${i<estado?"done":i===estado?"now":""}"><div class="tl-dot">${i<estado?"✓":i===estado?"●":""}</div><div><b>${p}</b><span>${i<=estado?s:"—"}</span></div></div>`).join("")}
+            </div>
+            ${estado===2?`<div class="dapp-alert blue"><span class="ico">🎉</span><div class="body"><b>El cliente aceptó</b><span>Un clic la convierte en pedido con las mismas partidas, precios y tiempo de entrega.</span>
+              <div class="approve-btns"><button class="btn-approve yes" id="convertir">Convertir en pedido ✓</button></div></div></div>`
+            :estado===3?`<div class="dapp-alert blue"><span class="ico">📦</span><div class="body"><b>Pedido ${pedido} creado</b><span>Entrega ${entrega()} · almacén ya tiene la orden de surtido.</span></div></div>`
+            :`<p class="dapp-note">Esta pantalla se actualiza sola cuando el cliente abre o acepta la cotización.</p>`}
+          </div>
+          <div class="dapp-bar"><button class="dapp-tab" id="otra">+ Nueva cotización</button>${estado<2?`<button class="dapp-tab" id="recordar">📲 Recordar al cliente</button>`:""}</div>`;
+        root.querySelector("#otra").onclick=()=>{qty={};view="arma";estado=0;paint();};
+        const r=root.querySelector("#recordar"); if(r) r.onclick=()=>toast("Recordatorio enviado por WhatsApp","📲");
+        const c=root.querySelector("#convertir"); if(c) c.onclick=()=>{pedido=nuevoFolio("PED");estado=3;toast("Pedido "+pedido+" creado","📦");paint();};
+        return;
+      }
+      root.innerHTML =
+        appHead("🧾","Aceros y Perfiles del Norte","Cotizador · TC "+TC.toFixed(2)+" · "+fechaCorta(0)) + `
+        <div class="dapp-body">
+          <div class="dapp-label">Cliente</div>
+          <div class="dapp-chips">${clientes.map(c=>`<button class="chip ${c.n===cliente.n?'on':''}" data-cli="${c.n}">${c.n} · ${c.nivel}${c.desc?" −"+c.desc+"%":""}</button>`).join("")}</div>
+          ${cat.map(it=>itemRow({
+            mute: it.hay===0 && !qty[it.n],
+            title: `${it.n}${it.hay===0?' <span class="dapp-badge amber">Sobre pedido</span>':it.hay<10?' <span class="dapp-badge amber">Quedan '+it.hay+' t</span>':""}`,
+            meta: `${money(precio(it))}/${it.u}${it.usd?" · "+usd(it.usd)+" × "+TC.toFixed(2):""} · entrega ${it.ent}`,
+            side: stepper(it.n, qty[it.n]||0, {unidad:"t"})
+          })).join("")}
+          ${ton()>0&&ton()<10?`<div class="dapp-alert amber"><span class="ico">💡</span><div class="body"><b>Faltan ${10-ton()} t para el −3% por volumen</b><span>Se aplica solo, encima del nivel del cliente</span></div></div>`:""}
+          ${ton()>0?`<div class="dapp-sheet">
+            <div class="dapp-row"><span>${ton()} t · subtotal</span><span>${money(sub())}</span></div>
+            ${descNivel()?`<div class="dapp-row is-ok"><span>Nivel ${cliente.nivel} −${cliente.desc}%</span><span>−${money(descNivel())}</span></div>`:""}
+            ${descVol()?`<div class="dapp-row is-ok"><span>Volumen 10 t+ −3%</span><span>−${money(descVol())}</span></div>`:""}
+            <div class="dapp-row"><span>IVA 16%</span><span>${money(iva())}</span></div>
+            <div class="dapp-row total"><span>Total</span><span>${money(total())}</span></div>
+            <div class="dapp-row"><span class="muted">Entrega</span><span>${entrega()}</span></div>
+            <div class="dapp-row"><span class="muted">Vigencia</span><span>hasta el ${fechaCorta(7)}</span></div>
+          </div>`:""}
+        </div>
+        <div class="dapp-bar">
+          <div class="dapp-total"><span>${ton()} toneladas</span><b>${money(total())}</b></div>
+          <button class="dapp-cta" id="generar" ${ton()===0?"disabled":""}>Generar y enviar</button>
+        </div>`;
+      root.querySelectorAll("[data-cli]").forEach(b=>b.onclick=()=>{cliente=clientes.find(c=>c.n===b.dataset.cli);paint();});
+      root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{qty[b.dataset.plus]=(qty[b.dataset.plus]||0)+1;paint();});
+      root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{const k=b.dataset.minus;if(qty[k]){qty[k]--;if(!qty[k])delete qty[k];}paint();});
+      root.querySelector("#generar").onclick=()=>{
+        folio=nuevoFolio("COT"); estado=0; view="seguimiento";
+        toast(folio+" generada en 12 segundos","⚡"); paint();
+        /* El cliente abre y acepta mientras la persona mira la pantalla */
+        dLater(()=>{ if(view==="seguimiento"&&estado===0){ estado=1; toast(cliente.n+" abrió la cotización","👀"); paint(); } },3500);
+        dLater(()=>{ if(view==="seguimiento"&&estado===1){ estado=2; toast(cliente.n+" aceptó la cotización","✅"); paint(); } },7500);
       };
     }
     withLoading(root, paint);
   }
 },
 
-/* ============ 4. DISTRIBUIDORA ============
-   Portal donde el tendero pide solo, sin llamar.
-   Realismo: pedido mínimo, hora de corte por día de reparto, línea de crédito
-   con fecha de corte, precios por volumen y seguimiento con repartidor. */
-distribuidora:{
-  title:"Portal de clientes",
+/* ============ 5. PORTAL B2B ============
+   El cliente mayorista crea sus órdenes solo, con sus precios pactados,
+   existencias reales, crédito y estado de cuenta en el mismo lugar. */
+portal:{
+  title:"Portal B2B de pedidos",
   render(root){
     const items = [
-      {e:"🫗",n:"Aceite vegetal 1 L",d:"Caja 12 pzas",p:310,vol:10},
-      {e:"🌾",n:"Harina de trigo 1 kg",d:"Caja 10 pzas",p:185,vol:10},
-      {e:"🐟",n:"Atún en agua",d:"Caja 48 latas",p:620,vol:5},
-      {e:"🧻",n:"Papel higiénico",d:"Paquete 32 rollos",p:265,vol:8},
-      {e:"🧴",n:"Detergente 5 kg",d:"Caja 4 pzas",p:390,vol:6},
-      {e:"🥫",n:"Frijol bayo 1 kg",d:"Costal 25 kg",p:720,vol:4}
+      {e:"🧪",n:"Sosa cáustica escamas 25 kg",p:685,hay:240,min:10,u:"saco"},
+      {e:"🧴",n:"Peróxido de hidrógeno 50% · 30 kg",p:1240,hay:36,min:4,u:"garrafón"},
+      {e:"🍋",n:"Ácido cítrico anhidro 25 kg",p:1120,hay:0,min:5,u:"saco"},
+      {e:"🛢️",n:"Hipoclorito de sodio 13% · 200 L",p:2350,hay:18,min:2,u:"tambo"},
+      {e:"🧂",n:"Carbonato de sodio 25 kg",p:410,hay:500,min:20,u:"saco"}
     ];
-    const LIMITE = 50000, USADO_PREVIO = 18400, MINIMO = 2000;
-    const lastOrder = {"Aceite vegetal 1 L":10,"Harina de trigo 1 kg":6,"Atún en agua":4};
-    const fechaUltimo = fechaCorta(-14);
-
-    /* Días de reparto reales, con su hora de corte */
-    const rutas = [
-      {dia:"Mañana", delta:1, corte:"hoy 4:00 pm"},
-      {dia:"Jueves", delta:proximo(4), corte:"miércoles 4:00 pm"},
-      {dia:"Sábado", delta:proximo(6), corte:"viernes 12:00 pm"}
+    const LIMITE=500000, USADO=168400;
+    let facturas=[
+      {f:"A-2026-1180",monto:84200,vence:12,estado:"por vencer"},
+      {f:"A-2026-1152",monto:84200,vence:-3,estado:"vencida"}
     ];
-
-    let qty = {}, tab = "Catálogo", entrega = rutas[0];
-    let historial = [
-      {folio:"PED-"+new Date().getFullYear()+"-0071",fecha:fechaUltimo,total:12750,status:"Entregado",pasos:4,
-       entrega:fechaCorta(-13),chofer:"Beto Márquez"}
-    ];
-
-    const precio = it => (qty[it.n]||0)>=it.vol ? Math.round(it.p*0.95) : it.p;
-    const total = () => items.reduce((s,it)=>s+(qty[it.n]||0)*precio(it),0);
+    let qty={}, tab="Catálogo", ocCliente="", dir="Planta Celaya", view="cat";
+    let pedidos=[{folio:"PED-"+new Date().getFullYear()+"-0498",fecha:fechaCorta(-9),total:63150,paso:3}];
+    const precio = it => it;
+    const total = () => items.reduce((s,it)=>s+(qty[it.n]||0)*it.p,0);
     const count = () => Object.values(qty).reduce((a,b)=>a+b,0);
-    const credito = () => USADO_PREVIO + total();
-    const falta = () => Math.max(0, MINIMO - total());
+    const vencidas = () => facturas.filter(f=>f.estado==="vencida");
+    const credito = () => USADO+total();
+    const faltaMin = () => Object.entries(qty).filter(([k,v])=>v<items.find(i=>i.n===k).min).map(([k])=>k);
+    const embarque = () => fechaCorta(proximo(new Date().getDay()<3?3:5));
 
     function paint(){
-      const usoPct = Math.min(1, credito()/LIMITE);
+      if(view==="confirmar"){
+        root.innerHTML =
+          appHead("🏢","Confirmar orden","Química Industrial del Bajío · cliente: Distribuidora Química del Centro") + `
+          <div class="dapp-body">
+            <div class="dapp-sheet">
+              ${Object.entries(qty).map(([k,v])=>{const it=items.find(i=>i.n===k);return `<div class="dapp-row"><span>${v} ${it.u}${v>1?"s":""} · ${k}</span><span>${money(v*it.p)}</span></div>`;}).join("")}
+              <div class="dapp-row"><span>IVA 16%</span><span>${money(Math.round(total()*0.16))}</span></div>
+              <div class="dapp-row total"><span>Total</span><span>${money(Math.round(total()*1.16))}</span></div>
+            </div>
+            <label class="dapp-label" for="ocC">Tu número de orden de compra</label>
+            <input class="dapp-input" id="ocC" placeholder="Ej. OC-7731 (sale en la factura)" value="${ocCliente}">
+            <div class="dapp-label">Entregar en</div>
+            <div class="dapp-chips">${["Planta Celaya","Bodega Querétaro"].map(d=>`<button class="chip ${d===dir?'on':''}" data-dir="${d}">🏭 ${d}</button>`).join("")}</div>
+            <div class="dapp-alert blue"><span class="ico">🗓️</span><div class="body"><b>Embarque el ${embarque()}</b><span>Siguiente salida de ruta a ${dir} · crédito a 30 días</span></div></div>
+            ${vencidas().length?`<div class="dapp-alert red"><span class="ico">⚠️</span><div class="body"><b>Tienes una factura vencida</b><span>La orden se libera cuando se registre el pago de ${vencidas()[0].f}. Puedes pagarla desde Estado de cuenta.</span></div></div>`:""}
+          </div>
+          <div class="dapp-bar">
+            <button class="dapp-tab" id="back">← Catálogo</button>
+            <button class="dapp-cta" id="confirmar" ${vencidas().length?"disabled":""}>Confirmar orden</button>
+          </div>`;
+        root.querySelector("#ocC").oninput=e=>ocCliente=e.target.value;
+        root.querySelectorAll("[data-dir]").forEach(b=>b.onclick=()=>{dir=b.dataset.dir;paint();});
+        root.querySelector("#back").onclick=()=>{view="cat";paint();};
+        root.querySelector("#confirmar").onclick=()=>{
+          const folio=nuevoFolio("PED"); const t=Math.round(total()*1.16);
+          pedidos.unshift({folio,fecha:"hoy",total:t,paso:0,dir,oc:ocCliente.trim()});
+          qty={}; tab="Mis órdenes"; view="cat";
+          toast("Orden "+folio+" recibida","📦"); paint();
+          dLater(()=>{const p=pedidos.find(x=>x.folio===folio); if(p){p.paso=1; toast(folio+" en preparación en planta","🏭"); if(tab==="Mis órdenes") paint();}},3500);
+          dLater(()=>{const p=pedidos.find(x=>x.folio===folio); if(p){p.paso=2; toast(folio+" embarcada · guía 7781-2210","🚛"); if(tab==="Mis órdenes") paint();}},8000);
+        };
+        return;
+      }
+      const uso = Math.min(1,credito()/LIMITE);
       root.innerHTML =
-        appHead("🚚","Distribuidora del Centro","Abarrotes Lupita · cliente mayorista ⭐") + `
+        appHead("🏢","Portal de clientes","Química Industrial del Bajío · Distribuidora Química del Centro") + `
         <div class="dapp-body">
           <div class="dapp-card">
             <b>Línea de crédito</b>
             <div class="dapp-row" style="padding:2px 0 0"><span class="muted">Usado</span><span>${money(credito())} de ${money(LIMITE)}</span></div>
-            <div class="credit-bar"><div class="credit-fill${usoPct>0.85?" is-hot":""}" style="transform:scaleX(${usoPct})"></div></div>
-            <span class="muted small">Disponible ${money(LIMITE-credito())} · corte el ${proximoDiaMes(30)} · sin facturas vencidas</span>
+            <div class="credit-bar"><div class="credit-fill${uso>0.85?" is-hot":""}" style="transform:scaleX(${uso})"></div></div>
+            <span class="muted small">Disponible ${money(LIMITE-credito())} · ${vencidas().length?'<b class="is-bad">'+vencidas().length+' factura vencida</b>':"sin facturas vencidas"}</span>
           </div>
-          <div class="dapp-tabs">${["Catálogo","Mis pedidos"].map(t=>
-            `<button class="dapp-tab ${t===tab?'active':''}" data-tab="${t}">${t}${t==="Mis pedidos"?" ("+historial.length+")":""}</button>`).join("")}</div>
-
-          ${tab==="Catálogo" ? `
-            <button class="dapp-repeat" id="repeat">🔁 Repetir mi pedido del ${fechaUltimo}<small>Aceite ×10 · Harina ×6 · Atún ×4</small></button>
-            ${items.map(it=>{
-              const enDesc = (qty[it.n]||0)>=it.vol;
-              return itemRow({
-                emoji: it.e,
-                title: it.n,
-                meta: `${it.d} · ${enDesc
-                  ? `<s>${money(it.p)}</s> <b class="is-ok">${money(precio(it))}</b> −5% por volumen`
-                  : `${money(it.p)} · desde ${it.vol} cajas −5%`}`,
-                side: stepper(it.n, qty[it.n]||0, {unidad:"cj"})
-              });
-            }).join("")}
-            <div class="dapp-label">Día de reparto</div>
-            <div class="dapp-chips">
-              ${rutas.map(r=>
-                `<button class="chip ${r.dia===entrega.dia?'on':''}" data-dia="${r.dia}">🗓️ ${r.dia} ${fechaCorta(r.delta)}</button>`).join("")}
-            </div>
-            <p class="dapp-note">Cierre de pedidos para ${entrega.dia.toLowerCase()}: ${entrega.corte}. Después entra a la siguiente ruta.</p>
-            ${falta()>0&&count()>0?`<div class="dapp-alert amber"><span class="ico">🧾</span>
-              <div class="body"><b>Pedido mínimo ${money(MINIMO)}</b><span>Te faltan ${money(falta())} para que la ruta pase a tu tienda</span></div></div>`:""}`
-
-          : historial.map(h=>`
+          <div class="dapp-tabs">${["Catálogo","Mis órdenes","Estado de cuenta"].map(t=>`<button class="dapp-tab ${t===tab?'active':''}" data-tab="${t}">${t}${t==="Mis órdenes"?" ("+pedidos.length+")":t==="Estado de cuenta"&&vencidas().length?" ⚠️":""}</button>`).join("")}</div>
+          ${tab==="Catálogo"?`
+            ${items.map(it=>itemRow({
+              emoji:it.e, mute:it.hay===0,
+              title:`${it.n}${it.hay===0?' <span class="dapp-badge red">Sin existencia</span>':it.hay<20?' <span class="dapp-badge amber">Quedan '+it.hay+'</span>':""}`,
+              meta:`${money(it.p)}/${it.u} · tu precio pactado · mínimo ${it.min} ${it.u}s`,
+              side:stepper(it.n,qty[it.n]||0,{unidad:it.u.slice(0,3),tope:it.hay})
+            })).join("")}
+            ${faltaMin().length?`<div class="dapp-alert amber"><span class="ico">📦</span><div class="body"><b>Pedido mínimo por producto</b><span>${faltaMin().join(", ")}: sube al mínimo o quítalo de la orden.</span></div></div>`:""}`
+          :tab==="Mis órdenes"?pedidos.map(p=>`
             <div class="dapp-card">
-              <div class="dapp-row" style="padding:0 0 10px"><span><b>${h.folio}</b> · ${h.fecha}</span>
-                <span class="dapp-badge ${h.status==="Entregado"?"green":"violet"}">${h.status}</span></div>
-              <div class="dapp-timeline">
-                ${["Pedido recibido","En preparación","En ruta","Entregado"].map((p,i)=>`
-                  <div class="tl-step ${i<h.pasos?"done":i===h.pasos?"now":""}">
-                    <div class="tl-dot">${i<h.pasos?"✓":i===h.pasos?"●":""}</div>
-                    <div><b>${p}</b>${i===h.pasos&&h.chofer?`<span>Reparte ${h.chofer}</span>`:""}</div>
-                  </div>`).join("")}
-              </div>
-              <div class="dapp-row" style="padding:0"><span class="muted">Entrega: ${h.entrega}</span><span></span></div>
-              <div class="dapp-row total" style="margin-top:0"><span>Total</span><span>${money(h.total)}</span></div>
-            </div>`).join("")}
+              <div class="dapp-row" style="padding:0 0 10px"><span><b>${p.folio}</b> · ${p.fecha}${p.oc?" · tu OC "+p.oc:""}</span><span class="dapp-badge ${p.paso===3?"green":"violet"}">${["Recibida","En preparación","Embarcada","Entregada"][p.paso]}</span></div>
+              <div class="dapp-timeline">${["Orden recibida","En preparación","Embarcada","Entregada"].map((s,i)=>`<div class="tl-step ${i<p.paso?"done":i===p.paso?"now":""}"><div class="tl-dot">${i<p.paso?"✓":i===p.paso?"●":""}</div><div><b>${s}</b>${i===2&&p.paso>=2?"<span>Guía 7781-2210 · rastreo en vivo</span>":""}</div></div>`).join("")}</div>
+              <div class="dapp-row total" style="margin-top:0"><span>Total</span><span>${money(p.total)}</span></div>
+            </div>`).join("")
+          :`
+            ${facturas.map((f,ix)=>itemRow({
+              emoji:f.estado==="pagada"?"✅":f.estado==="vencida"?"⚠️":"🧾",
+              title:`${f.f} ${f.estado==="vencida"?'<span class="dapp-badge red">Vencida hace '+(-f.vence)+' días</span>':f.estado==="pagada"?'<span class="dapp-badge green">Pagada</span>':'<span class="dapp-badge amber">Vence el '+fechaCorta(f.vence)+'</span>'}`,
+              meta:`${money(f.monto)} · CFDI 4.0 · <a href="#" data-cfdi="${f.f}">Descargar XML y PDF</a>`,
+              side:f.estado==="pagada"?"":`<button class="dapp-tab" data-pagar="${ix}">Pagar</button>`
+            })).join("")}
+            <p class="dapp-note">Las facturas, complementos de pago y el saldo viven aquí: ya no hay que pedírselos a nadie por correo.</p>`}
         </div>
         ${tab==="Catálogo"?`<div class="dapp-bar">
-          <div class="dapp-total"><span>${count()} ${count()===1?"caja":"cajas"}</span><b>${money(total())}</b></div>
-          <button class="dapp-cta" id="sendOrder" ${count()===0||falta()>0?"disabled":""}>Hacer pedido</button>
+          <div class="dapp-total"><span>${count()} ${count()===1?"unidad":"unidades"}</span><b>${money(total())}</b></div>
+          <button class="dapp-cta" id="go" ${count()===0||faltaMin().length?"disabled":""}>Revisar orden</button>
         </div>`:""}`;
-
       root.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;paint();});
-      root.querySelectorAll("[data-dia]").forEach(b=>b.onclick=()=>{entrega=rutas.find(r=>r.dia===b.dataset.dia);paint();});
-      root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{qty[b.dataset.plus]=(qty[b.dataset.plus]||0)+1;paint();});
-      root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{
-        const k=b.dataset.minus; if(qty[k]){qty[k]--; if(!qty[k])delete qty[k];} paint();});
-      const rep = root.querySelector("#repeat");
-      if(rep) rep.onclick=()=>{qty={...lastOrder};toast("Se cargó tu pedido del "+fechaUltimo,"🔁");paint();};
-      const send = root.querySelector("#sendOrder");
-      if(send) send.onclick=()=>{
-        const folio = nuevoFolio("PED");
-        const monto = total();
-        historial.unshift({folio,fecha:"hoy",total:monto,status:"En preparación",pasos:1,
-          entrega:entrega.dia.toLowerCase()+" "+fechaCorta(entrega.delta),chofer:"Beto Márquez"});
-        qty={}; tab="Mis pedidos";
-        toast("Pedido "+folio+" recibido en bodega","📦");
-        /* La bodega confirma y el pedido avanza solo, como en el portal real */
-        dLater(()=>{
-          const h = historial.find(x=>x.folio===folio);
-          if(h){ h.status="En ruta"; h.pasos=2;
-            if(tab==="Mis pedidos") paint();
-            toast("Beto salió con tu pedido "+folio,"🚚");
-          }
-        },3600);
-        paint();
-      };
+      root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{const k=b.dataset.plus;const it=items.find(i=>i.n===k);qty[k]=Math.min(it.hay,(qty[k]||0)+1);paint();});
+      root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{const k=b.dataset.minus;if(qty[k]){qty[k]--;if(!qty[k])delete qty[k];}paint();});
+      root.querySelectorAll("[data-cfdi]").forEach(a=>a.onclick=e=>{e.preventDefault();toast(a.dataset.cfdi+" descargada (XML + PDF)","📄");});
+      root.querySelectorAll("[data-pagar]").forEach(b=>b.onclick=()=>{const f=facturas[+b.dataset.pagar];f.estado="pagada";toast(f.f+" pagada por transferencia · complemento en camino","💳");paint();});
+      const go=root.querySelector("#go"); if(go) go.onclick=()=>{view="confirmar";paint();};
     }
     withLoading(root, paint);
   }
 },
 
-/* ============ 5. BOUTIQUE ============
-   Catálogo con inventario del local + apartados a plazos.
-   Realismo: colores y tallas con existencias reales, fechas de las quincenas
-   calculadas, validación de datos y descuento del inventario al apartar. */
-boutique:{
-  title:"Tienda y apartados",
+/* ============ 6. PRODUCCIÓN ============
+   Órdenes de producción con lista de materiales, avance por estación
+   reportado desde piso, consumo de inventario y merma en tiempo real. */
+produccion:{
+  title:"Piso de producción",
   render(root){
-    let items = [
-      {e:"👗",n:"Vestido floral",p:549,color:"Azul cielo",tallas:{CH:1,M:2,G:0}},
-      {e:"🧥",n:"Chamarra de mezclilla",p:729,color:"Índigo",tallas:{M:3,G:1,XL:1}},
-      {e:"👚",n:"Blusa de lino",p:389,color:"Hueso",tallas:{CH:1,M:1}},
-      {e:"👜",n:"Bolsa artesanal",p:459,color:"Tejida a mano",tallas:{"Única":1}},
-      {e:"👠",n:"Zapatilla nude",p:679,color:"Nude",tallas:{"23":1,"24":2,"25":0}},
-      {e:"🧣",n:"Rebozo de seda",p:890,color:"Vino",tallas:{"Única":2}}
+    const EST = ["Corte","Soldadura","Pintura","Ensamble","Calidad"];
+    const bom = {
+      "Bastidor soldado BS-400":[["Perfil PTR 2\" cal. 14",2.4,"m"],["Placa A-36 1/4\"",0.6,"kg"],["Soldadura ER70S-6",0.12,"kg"],["Pintura epóxica gris",0.08,"L"]],
+      "Tolva TV-120":[["Lámina galvanizada cal. 16",3.1,"m²"],["Ángulo 1 1/2\"",1.8,"m"],["Tornillería 3/8\" (juego)",1,"jgo"],["Pintura epóxica gris",0.15,"L"]],
+      "Base para motor BM-5":[["Placa A-36 1/2\"",4.2,"kg"],["Perfil PTR 2\" cal. 14",1.1,"m"],["Soldadura ER70S-6",0.2,"kg"]]
+    };
+    let stock = {"Perfil PTR 2\" cal. 14":1480,"Placa A-36 1/4\"":820,"Placa A-36 1/2\"":610,"Soldadura ER70S-6":96,"Pintura epóxica gris":140,"Lámina galvanizada cal. 16":210,"Ángulo 1 1/2\"":300,"Tornillería 3/8\" (juego)":45};
+    let ops = [
+      {id:"OP-2041",prod:"Bastidor soldado BS-400",cant:400,buenas:248,rech:6,est:2,cliente:"Transformadores del Bajío",entrega:fechaCorta(4)},
+      {id:"OP-2043",prod:"Tolva TV-120",cant:60,buenas:12,rech:1,est:1,cliente:"Agroindustrias Río Verde",entrega:fechaCorta(9)},
+      {id:"OP-2038",prod:"Base para motor BM-5",cant:120,buenas:120,rech:3,est:4,cliente:"Bombas del Centro",entrega:fechaCorta(-1)}
     ];
-    let sel = {}, fav = new Set(), plan = 1, view = "cat", nombre = "", tel = "";
-    const chosen = () => Object.entries(sel).filter(([,t])=>t);
-    const total = () => chosen().reduce((s,[n])=>s+items.find(i=>i.n===n).p,0);
-    const telLimpio = () => tel.replace(/\D/g,"");
-    /* Quincenas reales: día 15 y último de mes a partir de hoy */
-    function quincenas(n){
-      const out=[]; const d=new Date();
-      while(out.length<n){
-        d.setDate(d.getDate()+1);
-        const ultimo = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
-        if(d.getDate()===15 || d.getDate()===ultimo){
-          out.push(d.toLocaleDateString("es-MX",{day:"numeric",month:"short"}).replace(".",""));
-        }
-      }
-      return out;
-    }
+    let view="lista", sel=null, estRep=null, buenas=0, rech=0, nuevaProd="Bastidor soldado BS-400", nuevaCant=50;
+    const avance = o => Math.round(((o.est/EST.length)*0.6 + (o.buenas/o.cant)*0.4)*100);
+    const consumo = (o,m,c) => Math.round(c*(o.buenas+o.rech)*100)/100;
+    const badge = o => o.buenas>=o.cant&&o.est>=4?'<span class="dapp-badge green">Terminada</span>':o.est===4?'<span class="dapp-badge violet">En calidad</span>':'<span class="dapp-badge violet">'+EST[o.est]+'</span>';
+    const faltantes = (prod,cant) => bom[prod].filter(([m,c])=>stock[m]<c*cant).map(([m,c])=>({m,falta:Math.ceil(c*cant-stock[m])}));
+
+    /* El piso reporta solo mientras la persona mira */
+    dEvery(()=>{ const o=ops[0]; if(o.buenas<o.cant){ o.buenas=Math.min(o.cant,o.buenas+4); if(view==="lista"||(view==="op"&&sel===o)) paint(); } },5000);
 
     function paint(){
-      if(view==="cat"){
+      if(view==="op" && sel){
+        const o=sel;
         root.innerHTML =
-          appHead("👗","Boutique Alma","Catálogo · inventario del local en vivo",
-            `<span class="dapp-mini" aria-label="Favoritos">♥ ${fav.size}</span>`) + `
+          appHead("⚙️",o.id+" · "+o.prod,miles(o.cant)+" pz · "+o.cliente+" · entrega "+o.entrega) + `
           <div class="dapp-body">
-            ${items.map(it=>{
-              const stock = Object.values(it.tallas).reduce((a,b)=>a+b,0);
-              return `
-              <div class="dapp-item is-stacked">
-                <div class="main">
-                  <div class="prod-emoji lg">${it.e}</div>
-                  <div class="info"><b>${it.n}${stock===1?' <span class="dapp-badge amber">Última pieza</span>':""}</b>
-                    <span>${it.color} · ${stock} ${stock===1?"disponible":"disponibles"} en el local</span></div>
-                </div>
-                <div class="side">
-                  <span class="price">${money(it.p)}</span>
-                  <button class="fav-btn" data-fav="${it.n}" aria-label="${fav.has(it.n)?"Quitar de":"Guardar en"} favoritos">${fav.has(it.n)?"❤️":"🤍"}</button>
-                </div>
-                <div class="tallas">
-                  ${Object.entries(it.tallas).map(([t,st])=>`
-                    <button class="chip ${sel[it.n]===t?'on':''}" data-item="${it.n}" data-talla="${t}" ${st===0?"disabled":""}>
-                      ${t}${st===0?"":st===1?" · última":""}</button>`).join("")}
-                </div>
-              </div>`;}).join("")}
-            <p class="dapp-note">Cuando se vende una prenda en el local, desaparece del catálogo en línea al instante.</p>
-          </div>
-          <div class="dapp-bar">
-            <div class="dapp-total"><span>${chosen().length} ${chosen().length===1?"prenda":"prendas"}</span><b>${money(total())}</b></div>
-            <button class="dapp-cta" id="goPay" ${chosen().length===0?"disabled":""}>Apartar</button>
-          </div>`;
-        root.querySelectorAll("[data-fav]").forEach(b=>b.onclick=()=>{
-          const n=b.dataset.fav;
-          if(fav.has(n)){fav.delete(n);} else {fav.add(n);toast("Guardado en favoritos","❤️");}
-          paint();});
-        root.querySelectorAll("[data-talla]:not(:disabled)").forEach(b=>b.onclick=()=>{
-          const {item,talla} = b.dataset;
-          sel[item] = sel[item]===talla ? null : talla;
-          paint();});
-        const go = root.querySelector("#goPay");
-        if(go) go.onclick=()=>{view="pay";paint();};
-      }
-      else{
-        const cuota = Math.ceil(total()/plan);
-        const fechas = quincenas(plan);
-        root.innerHTML =
-          appHead("💳","Tu apartado","Confirma tus datos y cómo quieres pagar") + `
-          <div class="dapp-body">
+            <div class="dapp-card">
+              <div class="dapp-row" style="padding:0"><span><b>Avance</b></span><span><b>${avance(o)}%</b></span></div>
+              <div class="credit-bar"><div class="credit-fill" style="transform:scaleX(${avance(o)/100})"></div></div>
+              <span class="muted small">${o.buenas} buenas · ${o.rech} rechazadas (${(o.rech/Math.max(1,o.buenas+o.rech)*100).toFixed(1)}% merma) · estación actual: ${EST[o.est]}</span>
+            </div>
+            <div class="dapp-timeline">${EST.map((e,i)=>`<div class="tl-step ${i<o.est?"done":i===o.est?"now":""}"><div class="tl-dot">${i<o.est?"✓":i===o.est?"●":""}</div><div><b>${e}</b><span>${i<o.est?"completa":i===o.est?"en proceso · turno matutino":"—"}</span></div></div>`).join("")}</div>
+            <div class="dapp-label">Lista de materiales · consumo real</div>
             <div class="dapp-sheet">
-              ${chosen().map(([n,t])=>{const it=items.find(i=>i.n===n);
-                return `<div class="dapp-row"><span>${it.e} ${n} · talla ${t}</span><span>${money(it.p)}</span></div>`;}).join("")}
-              <div class="dapp-row total"><span>Total</span><span>${money(total())}</span></div>
-            </div>
-            <div class="dapp-label">Tus datos</div>
-            <input class="dapp-input" id="nom" placeholder="Tu nombre" value="${nombre}" autocomplete="name">
-            <input class="dapp-input" id="tel" placeholder="WhatsApp a 10 dígitos" value="${tel}" inputmode="numeric" autocomplete="tel">
-            <div class="dapp-label">Plan de pagos</div>
-            <div class="dapp-tabs">
-              ${[1,2,3].map(p=>`<button class="dapp-tab ${p===plan?'active':''}" data-plan="${p}">${p===1?"Un pago":p+" quincenas"}</button>`).join("")}
-            </div>
-            <div class="dapp-alert blue">
-              <span class="ico">📅</span>
-              <div class="body"><b>${plan===1?"Pagas "+money(total())+" al recoger":plan+" pagos de "+money(cuota)}</b>
-              <span>${plan===1
-                ? "Te lo guardamos hasta el "+fechaCorta(2)+" a las 8:00 pm"
-                : "Primer pago hoy · siguientes el "+fechas.slice(0,plan-1).join(" y el ")+" · te recordamos por WhatsApp un día antes"}</span></div>
+              ${bom[o.prod].map(([m,c,u])=>`<div class="dapp-row"><span>${m}<small>${c} ${u}/pz · consumido ${consumo(o,m,c)} ${u}</small></span><span class="${stock[m]<c*(o.cant-o.buenas)?"is-bad":"is-ok"}">${stock[m]<c*(o.cant-o.buenas)?"falta":"ok"} · ${stock[m]} ${u}</span></div>`).join("")}
             </div>
           </div>
           <div class="dapp-bar">
-            <button class="dapp-tab" id="back">← Catálogo</button>
-            <button class="dapp-cta" id="confirm">Confirmar apartado</button>
+            <button class="dapp-tab" id="back">← Órdenes</button>
+            <button class="dapp-cta" id="reportar" ${o.buenas>=o.cant&&o.est>=4?"disabled":""}>📋 Reportar avance</button>
           </div>`;
-        root.querySelector("#nom").oninput=e=>nombre=e.target.value;
-        root.querySelector("#tel").oninput=e=>tel=e.target.value;
-        root.querySelectorAll("[data-plan]").forEach(b=>b.onclick=()=>{plan=+b.dataset.plan;paint();});
-        root.querySelector("#back").onclick=()=>{view="cat";paint();};
-        root.querySelector("#confirm").onclick=()=>{
-          if(!nombre.trim()){ toast("Escribe tu nombre","⚠️"); keepCaret(root,"#nom"); return; }
-          if(telLimpio().length!==10){ toast("El WhatsApp va a 10 dígitos","⚠️"); keepCaret(root,"#tel"); return; }
-          const lista = chosen();
-          lista.forEach(([n,t])=>{items.find(i=>i.n===n).tallas[t]--;});
-          const folio = "AP-"+String(folioSeq++%900+100);
-          toast("Apartado "+folio+" confirmado","🛍️");
-          successScreen(root,"🛍️","¡Listo, "+nombre.trim().split(" ")[0]+"!",
-            "El inventario del local ya se actualizó solo: esas prendas dejaron de estar disponibles para alguien más.",
-            `<div class="dapp-row"><span>Apartado</span><span>${folio}</span></div>
-             <div class="dapp-row"><span>A nombre de</span><span>${nombre.trim()}</span></div>
-             <div class="dapp-row"><span>Prendas</span><span>${lista.length}</span></div>
-             <div class="dapp-row"><span>${plan===1?"Recoger antes del":"Pagos"}</span><span>${plan===1?fechaCorta(2):plan+" quincenas"}</span></div>
-             <div class="dapp-row total"><span>Total</span><span>${money(total())}</span></div>`);
-        };
+        root.querySelector("#back").onclick=()=>{view="lista";paint();};
+        root.querySelector("#reportar").onclick=()=>{estRep=o.est;buenas=20;rech=0;view="reporte";paint();};
+        return;
       }
-    }
-    withLoading(root, paint);
-  }
-},
-
-/* ============ 6. TALLER ============
-   El cliente consulta su vehículo sin llamar: avance, presupuesto que aprueba
-   por escrito, fotos y chat con el mecánico.
-   Realismo: folio que se valida de verdad, avance que sube con el tiempo,
-   indicador de "escribiendo…" y solicitud de factura. */
-taller:{
-  title:"Taller en línea",
-  render(root){
-    const FOLIO = "A-1042";
-    let view = "lookup", tab = "Avance", chatDraft = "", intento = "A-1042", error = "";
-    let avance = 70, escribiendo = false, factura = false;
-    let extra = {n:"Cambio de bujías",p:480,status:"pendiente",hora:""};
-    const base = [
-      {n:"Balatas delanteras (juego)",p:1250},
-      {n:"Rectificado de discos",p:600},
-      {n:"Mano de obra",p:850}
-    ];
-    let msgs = [
-      {me:false,t:"Buen día Sr. Méndez, recibimos su Versa a las 10:30. En cuanto tengamos el diagnóstico le aviso por aquí 👍",h:horaMas(-240)},
-      {me:false,t:"Diagnóstico listo: balatas al 10% y discos con desgaste. Le dejé el presupuesto en la pestaña de al lado.",h:horaMas(-95)}
-    ];
-    const replies = [
-      "¡Claro que sí! Ahorita le mando la foto 📸",
-      "Vamos bien de tiempo, hoy mismo queda 👌",
-      "Anotado. Cualquier cosa le aviso por aquí 🙌"
-    ];
-    let ri = 0;
-    const total = () => base.reduce((s,i)=>s+i.p,0) + (extra.status==="aprobado"?extra.p:0);
-
-    function paint(){
-      if(view==="lookup"){
+      if(view==="reporte" && sel){
+        const o=sel;
         root.innerHTML =
-          appHead("🔧","Taller Rodríguez","Consulta el estatus de tu vehículo") + `
+          appHead("📋","Reportar avance",o.id+" · "+EST[estRep]+" · "+ahora()) + `
           <div class="dapp-body">
-            <label class="dapp-label" for="folio">Número de orden</label>
-            <input class="dapp-input${error?" is-error":""}" id="folio" value="${intento}" autocapitalize="characters">
-            ${error?`<p class="dapp-error">⚠️ ${error}</p>`:""}
-            <button class="dapp-cta full" id="check">Consultar estatus</button>
-            <div class="dapp-alert blue" style="margin-top:16px"><span class="ico">📲</span>
-              <div class="body"><b>Tu cliente recibe este enlace al dejar su vehículo</b>
-              <span>Nadie vuelve a llamar para preguntar "¿ya está listo?"</span></div></div>
+            <div class="dapp-label">Estación</div>
+            <div class="dapp-chips">${EST.map((e,i)=>`<button class="chip ${i===estRep?'on':''}" data-est="${i}" ${i>o.est?"disabled":""}>${e}</button>`).join("")}</div>
+            ${itemRow({title:"Piezas buenas",meta:"Pasan a la siguiente estación",side:stepper("b",buenas)})}
+            ${itemRow({title:"Rechazadas",meta:"Se registran como merma con motivo",side:stepper("r",rech)})}
+            ${rech?`<div class="dapp-label">Motivo del rechazo</div><div class="dapp-chips">${["Poro en soldadura","Dimensión fuera de tolerancia","Daño en pintura"].map(m=>`<button class="chip" data-mot="${m}">${m}</button>`).join("")}</div>`:""}
+            <div class="dapp-alert blue"><span class="ico">📦</span><div class="body"><b>Consumo que se descuenta del almacén</b><span>${bom[o.prod].map(([m,c,u])=>m.split(" ")[0]+" "+(c*(buenas+rech)).toFixed(1)+" "+u).join(" · ")}</span></div></div>
+          </div>
+          <div class="dapp-bar">
+            <button class="dapp-tab" id="back">← ${o.id}</button>
+            <button class="dapp-cta" id="guardar" ${buenas+rech===0?"disabled":""}>Guardar reporte</button>
           </div>`;
-        const inp = root.querySelector("#folio");
-        inp.oninput=e=>{intento=e.target.value;};
-        inp.onkeydown=e=>{ if(e.key==="Enter") root.querySelector("#check").click(); };
-        root.querySelector("#check").onclick=()=>{
-          if(intento.trim().toUpperCase()!==FOLIO){
-            error = "No encontramos la orden "+(intento.trim()||"vacía")+". Revisa tu comprobante — en el demo es "+FOLIO+".";
-            paint(); keepCaret(root,"#folio"); return;
-          }
-          error=""; view="status";
-          /* El avance sube solo mientras la pantalla está abierta */
-          dEvery(()=>{
-            if(avance<100){
-              avance = Math.min(100, avance+2);
-              if(view==="status" && tab==="Avance") paint();
-            }
-          },4000);
-          paint();
+        root.querySelectorAll("[data-est]").forEach(b=>b.onclick=()=>{estRep=+b.dataset.est;paint();});
+        root.querySelectorAll("[data-mot]").forEach(b=>b.onclick=()=>{root.querySelectorAll("[data-mot]").forEach(x=>x.classList.remove("on"));b.classList.add("on");});
+        root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{ if(b.dataset.plus==="b") buenas=Math.min(o.cant-o.buenas,buenas+5); else rech+=1; paint();});
+        root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{ if(b.dataset.minus==="b") buenas=Math.max(0,buenas-5); else rech=Math.max(0,rech-1); paint();});
+        root.querySelector("#back").onclick=()=>{view="op";paint();};
+        root.querySelector("#guardar").onclick=()=>{
+          bom[o.prod].forEach(([m,c])=>{stock[m]=Math.max(0,Math.round((stock[m]-c*(buenas+rech))*100)/100);});
+          o.buenas=Math.min(o.cant,o.buenas+buenas); o.rech+=rech;
+          if(o.buenas>=o.cant && estRep<EST.length-1) o.est=Math.min(EST.length-1,estRep+1);
+          toast("Avance guardado · inventario descontado","✅");
+          view="op"; paint();
         };
         return;
       }
-
-      root.innerHTML =
-        appHead("🔧","Orden "+FOLIO,"Nissan Versa 2019 · placas MHZ-42-18 · Sr. Méndez") + `
-        <div class="dapp-body">
-          <div class="dapp-tabs">${["Avance","Presupuesto","Fotos","Chat"].map(t=>
-            `<button class="dapp-tab ${t===tab?'active':''}" data-tab="${t}">${t}${t==="Presupuesto"&&extra.status==="pendiente"?" ⚠️":""}</button>`).join("")}</div>
-
-          ${tab==="Avance"?`
-            <div class="dapp-card">
-              <div class="dapp-row" style="padding:0"><span><b>Avance general</b></span><span><b>${avance}%</b></span></div>
-              <div class="credit-bar"><div class="credit-fill" style="transform:scaleX(${avance/100})"></div></div>
-              <span class="muted small">${avance>=100?"Listo para entrega — te avisamos por WhatsApp":"Estimamos terminar hoy a las "+horaMas((100-avance)*3)}</span>
-            </div>
-            <div class="dapp-timeline">
-              <div class="tl-step done"><div class="tl-dot">✓</div><div><b>Vehículo recibido</b><span>Ayer 10:30 am · kilometraje 84,120</span></div></div>
-              <div class="tl-step done"><div class="tl-dot">✓</div><div><b>Diagnóstico y presupuesto</b><span>Balatas al 10% y discos con desgaste</span></div></div>
-              <div class="tl-step done"><div class="tl-dot">✓</div><div><b>Refacciones recibidas</b><span>Hoy 9:00 am · originales con garantía</span></div></div>
-              <div class="tl-step ${avance>=100?"done":"now"}"><div class="tl-dot">${avance>=100?"✓":"●"}</div>
-                <div><b>En reparación · ${avance}%</b><span>Frenos delanteros armados, falta prueba de carretera</span></div></div>
-              <div class="tl-step ${avance>=100?"now":""}"><div class="tl-dot">${avance>=100?"●":""}</div>
-                <div><b>Listo para entrega</b><span>${avance>=100?"Puedes pasar por él":"Te avisamos por WhatsApp"}</span></div></div>
-            </div>`
-
-          :tab==="Presupuesto"?`
-            <div class="dapp-sheet">
-              ${base.map(i=>`<div class="dapp-row"><span>${i.n}</span><span>${money(i.p)}</span></div>`).join("")}
-              ${extra.status==="aprobado"?`<div class="dapp-row is-ok"><span>${extra.n} ✓</span><span>${money(extra.p)}</span></div>`:""}
-              <div class="dapp-row total"><span>Total ${extra.status==="aprobado"?"actualizado":"autorizado"}</span><span>${money(total())}</span></div>
-            </div>
-            ${extra.status==="pendiente"?`
-              <div class="dapp-alert amber">
-                <span class="ico">🔍</span>
-                <div class="body"><b>El mecánico encontró algo más</b>
-                  <span>${extra.n} · ${money(extra.p)}. Las actuales tienen desgaste avanzado y hacen fallar el arranque en frío.</span>
-                  <div class="approve-btns">
-                    <button class="btn-approve yes" id="apr">Aprobar</button>
-                    <button class="btn-approve no" id="rej">Ahora no</button>
-                  </div>
-                </div>
-              </div>`
-            :extra.status==="rechazado"?`
-              <div class="dapp-alert blue"><span class="ico">👍</span>
-                <div class="body"><b>Sin cargos extra</b><span>Solo se hará el trabajo que autorizaste al principio</span></div></div>`
-            :`
-              <div class="dapp-alert blue"><span class="ico">✅</span>
-                <div class="body"><b>Trabajo adicional aprobado a las ${extra.hora}</b>
-                <span>Quedó registrado con fecha y hora — sin sorpresas a la hora de pagar</span></div></div>`}
-            <label class="dapp-check">
-              <input type="checkbox" id="fac" ${factura?"checked":""}>
-              <span>Quiero factura a nombre de mi empresa</span>
-            </label>
-            ${factura?`<p class="dapp-note">Te pediremos el RFC y el uso de CFDI al momento de entregar. La factura sale el mismo día.</p>`:""}`
-
-          :tab==="Fotos"?`
-            <div class="photo-grid">
-              <div class="photo">🛞<small>Balata · antes</small></div>
-              <div class="photo">🔩<small>Disco · antes</small></div>
-              <div class="photo">⚙️<small>Refacción nueva</small></div>
-              <div class="photo">🛠️<small>Montaje</small></div>
-              <div class="photo">📸<small>Torque final</small></div>
-              <div class="photo">🚗<small>Prueba</small></div>
-            </div>
-            <p class="dapp-note">El mecánico sube el antes y el después desde su celular. Tu cliente ve la evidencia y tú quedas cubierto ante un reclamo.</p>`
-
-          :`
-            <div class="chat-list" id="chatList">
-              ${msgs.map(m=>`<div class="chat-msg ${m.me?"me":"them"}">${m.t}<small>${m.h}</small></div>`).join("")}
-              ${escribiendo?`<div class="chat-msg them typing"><i></i><i></i><i></i></div>`:""}
-            </div>
-            <div class="chat-input-row">
-              <input class="dapp-input" id="chatInp" placeholder="Escribe un mensaje…" value="${chatDraft}" aria-label="Mensaje para el taller">
-              <button class="dapp-btn-sm send" id="chatSend" aria-label="Enviar mensaje">➤</button>
-            </div>
-            <p class="dapp-note">Chat directo con el taller: sin llamadas y todo queda por escrito.</p>`}
-        </div>`;
-
-      root.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;paint();});
-      const a=root.querySelector("#apr"), r=root.querySelector("#rej");
-      if(a) a.onclick=()=>{extra.status="aprobado";extra.hora=ahora();toast("Autorización registrada","✅");paint();};
-      if(r) r.onclick=()=>{extra.status="rechazado";toast("Anotado, sin cargos extra","👍");paint();};
-      const fac=root.querySelector("#fac");
-      if(fac) fac.onchange=e=>{factura=e.target.checked;paint();};
-
-      const inp=root.querySelector("#chatInp"), sendB=root.querySelector("#chatSend");
-      if(inp){
-        const list = root.querySelector("#chatList");
-        if(list) list.scrollTop = list.scrollHeight;
-        inp.oninput=e=>chatDraft=e.target.value;
-        const sendMsg=()=>{
-          if(!chatDraft.trim()) return;
-          msgs.push({me:true,t:chatDraft.trim(),h:ahora()});
-          chatDraft=""; escribiendo=false;
-          paint(); keepCaret(root,"#chatInp");
-          /* El mecánico "escribe" antes de contestar, como en WhatsApp */
-          dLater(()=>{
-            escribiendo=true;
-            if(view==="status"&&tab==="Chat") paint();
-            dLater(()=>{
-              escribiendo=false;
-              msgs.push({me:false,t:replies[ri++%replies.length],h:ahora()});
-              if(view==="status"&&tab==="Chat"){ paint(); keepCaret(root,"#chatInp"); }
-              else toast("Nuevo mensaje del taller","💬");
-            },1500);
-          },700);
+      if(view==="nueva"){
+        const falt=faltantes(nuevaProd,nuevaCant);
+        root.innerHTML =
+          appHead("➕","Nueva orden de producción","Explosión de materiales contra el almacén") + `
+          <div class="dapp-body">
+            <div class="dapp-label">Producto</div>
+            <div class="dapp-chips">${Object.keys(bom).map(p=>`<button class="chip ${p===nuevaProd?'on':''}" data-prod="${p}">${p}</button>`).join("")}</div>
+            ${itemRow({title:"Cantidad a producir",meta:"Entrega estimada "+fechaCorta(Math.ceil(nuevaCant/40)+2)+" a 40 pz por turno",side:stepper("c",nuevaCant,{unidad:"pz"})})}
+            <div class="dapp-label">Materiales requeridos</div>
+            <div class="dapp-sheet">${bom[nuevaProd].map(([m,c,u])=>`<div class="dapp-row"><span>${m}</span><span class="${stock[m]<c*nuevaCant?"is-bad":"is-ok"}">${(c*nuevaCant).toFixed(1)} ${u} · ${stock[m]<c*nuevaCant?"faltan "+Math.ceil(c*nuevaCant-stock[m]):"hay "+stock[m]}</span></div>`).join("")}</div>
+            ${falt.length?`<div class="dapp-alert amber"><span class="ico">🛒</span><div class="body"><b>Falta material para esta cantidad</b><span>Se genera la requisición a compras automáticamente al liberar la orden.</span></div></div>`
+            :`<div class="dapp-alert blue"><span class="ico">✅</span><div class="body"><b>Material completo en almacén</b><span>La orden puede liberarse al piso hoy mismo.</span></div></div>`}
+          </div>
+          <div class="dapp-bar"><button class="dapp-tab" id="back">← Órdenes</button><button class="dapp-cta" id="liberar">Liberar orden</button></div>`;
+        root.querySelectorAll("[data-prod]").forEach(b=>b.onclick=()=>{nuevaProd=b.dataset.prod;paint();});
+        root.querySelectorAll("[data-plus]").forEach(b=>b.onclick=()=>{nuevaCant+=10;paint();});
+        root.querySelectorAll("[data-minus]").forEach(b=>b.onclick=()=>{nuevaCant=Math.max(10,nuevaCant-10);paint();});
+        root.querySelector("#back").onclick=()=>{view="lista";paint();};
+        root.querySelector("#liberar").onclick=()=>{
+          const id="OP-"+(2044+ops.length); const f=faltantes(nuevaProd,nuevaCant);
+          ops.unshift({id,prod:nuevaProd,cant:nuevaCant,buenas:0,rech:0,est:0,cliente:"Stock",entrega:fechaCorta(Math.ceil(nuevaCant/40)+2)});
+          toast(id+" liberada al piso"+(f.length?" · requisición enviada a compras":""),"⚙️");
+          view="lista"; paint();
         };
-        sendB.onclick=sendMsg;
-        inp.onkeydown=e=>{ if(e.key==="Enter") sendMsg(); };
+        return;
       }
+      root.innerHTML =
+        appHead("⚙️","Metalmecánica Delta","Piso de producción · turno matutino",`<button class="dapp-mini" id="nueva">+ Orden</button>`) + `
+        <div class="dapp-body">
+          <div class="stat-grid">
+            <div class="stat-card"><span>Piezas hoy</span><b>${ops.reduce((s,o)=>s+o.buenas,0)}</b><em>▲ en turno</em></div>
+            <div class="stat-card"><span>Merma</span><b>${(ops.reduce((s,o)=>s+o.rech,0)/Math.max(1,ops.reduce((s,o)=>s+o.buenas+o.rech,0))*100).toFixed(1)}%</b><em>meta 2%</em></div>
+            <div class="stat-card"><span>Abiertas</span><b>${ops.filter(o=>!(o.buenas>=o.cant&&o.est>=4)).length}</b><em>órdenes</em></div>
+          </div>
+          ${ops.map(o=>itemRow({
+            emoji: o.buenas>=o.cant&&o.est>=4?"✅":"⚙️",
+            title:`${o.id} ${badge(o)}`,
+            meta:`${o.prod} · ${o.buenas}/${o.cant} pz · ${o.cliente} · entrega ${o.entrega}`,
+            side:`<span class="price">${avance(o)}%</span><button class="dapp-tab" data-ver="${o.id}">Ver</button>`
+          })).join("")}
+          <p class="dapp-note">Cada reporte desde piso descuenta materiales del almacén al instante: compras ve lo que falta antes de que pare la línea.</p>
+        </div>`;
+      root.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>{sel=ops.find(o=>o.id===b.dataset.ver);view="op";paint();});
+      root.querySelector("#nueva").onclick=()=>{view="nueva";paint();};
     }
     withLoading(root, paint);
   }

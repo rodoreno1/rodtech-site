@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Almacén Central — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para un almacén industrial. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+/* ---------------- Estado ---------------- */
+const dias = n => { const d = new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("es-MX",{day:"numeric",month:"short"}).replace(".",""); };
+let S = {
+  seqOS: 418, seqOC: 345, seqMov: 1,
+  items: [
+    {sku:"44-118", n:"Rodamiento 6205-2RS", ub:"A-07-2", hay:320, min:150, max:800, u:"pz", lote:"L-2609", prov:"Ningbo Steelworks", costo:21.2},
+    {sku:"44-131", n:"Banda en V A-42", ub:"A-07-3", hay:96, min:120, max:600, u:"pz", lote:"L-2588", prov:"Ningbo Steelworks", costo:44.2},
+    {sku:"51-204", n:"Taladro percutor 1/2\"", ub:"B-02-1", hay:48, min:60, max:300, u:"pz", lote:"L-2611", prov:"Shenzhen Hengli", costo:709},
+    {sku:"51-207", n:"Esmeril angular 4 1/2\"", ub:"B-02-2", hay:210, min:60, max:300, u:"pz", lote:"L-2611", prov:"Shenzhen Hengli", costo:514},
+    {sku:"70-015", n:"Bomba centrífuga 5 HP", ub:"C-01-1", hay:7, min:4, max:20, u:"pz", lote:"L-2602", prov:"Houston Pump", costo:47500},
+    {sku:"33-402", n:"Guante nitrilo T-9 (caja)", ub:"D-11-4", hay:12, min:40, max:200, u:"caja", lote:"L-2597", prov:"Seguridad Total", costo:380},
+    {sku:"33-410", n:"Casco industrial clase E", ub:"D-11-2", hay:0, min:25, max:120, u:"pz", lote:"—", prov:"Seguridad Total", costo:165},
+    {sku:"60-220", n:"Aceite hidráulico ISO 68 · 19 L", ub:"E-03-1", hay:64, min:30, max:150, u:"cubeta", lote:"L-2590", prov:"Lubricantes del Norte", costo:1180},
+  ],
+  surtidos: [
+    {folio:"OS-2026-0417", cliente:"Maquinados del Norte", estado:"en proceso", lineas:[["44-118",40,false],["51-207",6,false],["33-402",4,false],["70-015",1,false]]},
+    {folio:"OS-2026-0416", cliente:"Transformadores del Bajío", estado:"cerrado", lineas:[["44-131",60,true],["60-220",4,true]]},
+  ],
+  recepciones: [
+    {oc:"OC-2026-0301", prov:"Houston Pump Supply", estado:"pendiente", lineas:[["70-015",24,0]]},
+    {oc:"OC-2026-0322", prov:"Ningbo Steelworks", estado:"pendiente", lineas:[["44-118",3000,0],["44-131",800,0]]},
+  ],
+  movimientos: [
+    {f:dias(-1), t:"Salida", ref:"OS-2026-0412", sku:"44-118", q:-30},
+    {f:dias(-1), t:"Salida", ref:"OS-2026-0412", sku:"51-204", q:-12},
+    {f:dias(-6), t:"Entrada", ref:"OC-2026-0298", sku:"51-204", q:60},
+    {f:dias(-9), t:"Conteo", ref:"Cíclico A-07", sku:"44-118", q:0},
+  ],
+  sel:null,
+};
+const item = s => S.items.find(i=>i.sku===s);
+const bajos = () => S.items.filter(i=>i.hay<i.min);
+const valor = () => S.items.reduce((s,i)=>s+i.hay*i.costo,0);
+const ocupacion = () => Math.round(S.items.reduce((s,i)=>s+Math.min(1,i.hay/i.max),0)/S.items.length*100);
+const estado = i => i.hay===0?'<span class="tag bad">Agotado</span>':i.hay<i.min?'<span class="tag warn">Bajo mínimo</span>':'<span class="tag ok">OK</span>';
+function mover(t, ref, sku, q){ S.movimientos.unshift({f:dias(0),t,ref,sku,q}); const i=item(sku); i.hay=Math.max(0,i.hay+q); }
+
+/* ---------------- Flujos ---------------- */
+function tomarLinea(os, ix, refrescar){
+  const l=os.lineas[ix]; const i=item(l[0]);
+  if(i.hay<l[1]){ toast("Solo hay "+i.hay+" "+i.u+" en "+i.ub+": se surte parcial y se avisa a compras","⚠️"); l[1]=i.hay; }
+  l[2]=true; mover("Salida",os.folio,l[0],-l[1]);
+  if(os.lineas.every(x=>x[2])){ os.estado="cerrado"; toast(os.folio+" cerrado · embarque listo en andén","✅"); }
+  else toast(i.ub+" · "+l[1]+" "+i.u+" escaneadas","📷");
+  refrescar();
+}
+function nuevoSurtido(refrescar){
+  drawer("Nueva orden de surtido", `
+    ${campo("Cliente / destino",`<input name="cli" required placeholder="Ej. Fundidora Escobedo">`)}
+    ${campo("Líneas",`<div class="pick">${S.items.filter(i=>i.hay>0).map((i,ix)=>`<label><input type="checkbox" name="it_${ix}" value="1"><b>${esc(i.n)}</b><span>${i.ub} · ${i.hay} ${i.u}</span><input type="number" name="q_${ix}" value="1" min="1" max="${i.hay}"></label>`).join("")}</div>`,"Se ordenan por pasillo para no dar vueltas")}`,
+    d=>{ const disp=S.items.filter(i=>i.hay>0); const lineas=[]; disp.forEach((i,ix)=>{ if(d["it_"+ix]) lineas.push([i.sku,Math.max(1,parseInt(d["q_"+ix]||"1",10)),false]); });
+      if(!lineas.length){ toast("Marca al menos una línea","⚠️"); return false; }
+      lineas.sort((a,b)=>item(a[0]).ub.localeCompare(item(b[0]).ub));
+      const os={folio:"OS-"+new Date().getFullYear()+"-"+String(S.seqOS++).padStart(4,"0"),cliente:d.cli,estado:"en proceso",lineas}; S.surtidos.unshift(os);
+      toast(os.folio+" creada · "+lineas.length+" líneas en la terminal del almacenista","🗂️"); refrescar(); },{enviar:"Liberar a piso"});
+}
+function recibir(r, refrescar){
+  drawer("Recepción · "+r.oc, `
+    <div class="note info"><span class="ic">🚚</span><div><b>${esc(r.prov)}</b><span>Captura lo que llegó; lo que no coincida con la OC se marca solo</span></div></div>
+    ${r.lineas.map((l,ix)=>campo(item(l[0]).n+" · esperado "+miles(l[1]),`<input name="q_${ix}" type="number" value="${l[1]}" min="0">`)).join("")}
+    ${campo("Observaciones",`<input name="obs" placeholder="Tarima dañada, caja abierta…">`)}`,
+    d=>{ let disc=0; r.lineas.forEach((l,ix)=>{ l[2]=Math.max(0,parseInt(d["q_"+ix]||"0",10)); if(l[2]!==l[1]) disc++; mover("Entrada",r.oc,l[0],l[2]); });
+      r.estado="recibida"; r.disc=disc; toast(disc?"Entrada registrada con "+disc+" discrepancia(s) · compras ya la vio":"Entrada registrada · coincide con la OC","✅"); refrescar(); },{enviar:"Confirmar entrada"});
+}
+function conteo(i, refrescar){
+  drawer("Conteo cíclico · "+i.ub, `${campo(i.n+" · sistema dice "+i.hay+" "+i.u,`<input name="q" type="number" value="${i.hay}" min="0" required>`)}${campo("Contó",`<input name="quien" placeholder="Nombre del almacenista">`)}`,
+    d=>{ const q=parseInt(d.q,10); const dif=q-i.hay; if(dif){ mover("Ajuste","Conteo "+i.ub,i.sku,dif); toast("Ajuste de "+(dif>0?"+":"")+dif+" "+i.u+" registrado con firma","📝"); } else { S.movimientos.unshift({f:dias(0),t:"Conteo",ref:"Cíclico "+i.ub,sku:i.sku,q:0}); toast("Conteo sin diferencia · exactitud 100%","✅"); } refrescar(); },{enviar:"Registrar conteo"});
+}
+function reordenar(i, refrescar){
+  const q=i.max-i.hay; const folio="OC-"+new Date().getFullYear()+"-"+String(S.seqOC++).padStart(4,"0");
+  toast(folio+" generada a "+i.prov+" por "+q+" "+i.u,"📝"); i.pedido=folio; refrescar();
+}
+
+/* ---------------- Demo ---------------- */
+const DEMO = {
+  negocio:"Almacén Central", rubro:"Industrias Monterrey · nave 2", emoji:"📦",
+  estado:{clave:"almacen", get:()=>S, set:o=>{S=o;}},
+  secciones:[
+    {
+      id:"existencias", nombre:"Existencias", ic:"📦", titulo:"Existencias", sub:"Por ubicación, lote y proveedor · escanea o busca",
+      badge:()=>bajos().length,
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Valor del inventario</div><div class="val">${money(Math.round(valor()))}</div><div class="delta flat">a costo promedio</div></div>
+            <div class="kpi"><div class="lbl">Exactitud</div><div class="val">99.2%</div><div class="delta up">último conteo cíclico</div></div>
+            <div class="kpi"><div class="lbl">Ocupación</div><div class="val">${ocupacion()}%</div><div class="delta flat">de la capacidad</div></div>
+            <div class="kpi"><div class="lbl">Bajo mínimo</div><div class="val">${bajos().length}</div><div class="delta ${bajos().length?"down":"up"}">${bajos().length?"con reorden sugerido":"todo cubierto"}</div></div>
+          </div>
+          <div class="panel"><div class="panel-h"><h2>Inventario</h2><div class="right"><input class="field search" id="q" placeholder="📷 Escanea o busca SKU, nombre, ubicación…"></div></div>
+          <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>SKU</th><th>Ubicación</th><th>Existencia</th><th>Nivel</th><th>Lote · proveedor</th><th></th></tr></thead>
+            <tbody id="tb">${S.items.map(i=>`<tr data-k="${esc((i.sku+" "+i.n+" "+i.ub).toLowerCase())}">
+              <td><div class="cellmain"><div class="em">${i.sku.slice(0,2)}</div><div><b>${esc(i.n)}</b><span>${i.sku}</span></div></div></td>
+              <td><span class="tag neutral">${i.ub}</span></td>
+              <td><b>${i.hay}</b> ${i.u}<br><span style="font-size:.78rem;color:var(--ink-3)">mín. ${i.min} · máx. ${i.max}</span></td>
+              <td>${estado(i)}${i.pedido?'<br><span style="font-size:.78rem;color:var(--ink-3)">'+i.pedido+' en camino</span>':""}</td>
+              <td>${i.lote}<br><span style="font-size:.8rem;color:var(--ink-3)">${esc(i.prov)}</span></td>
+              <td><div class="actions"><button class="btn sm" data-cont="${i.sku}">Conteo</button>${i.hay<i.min&&!i.pedido?`<button class="btn sm primary" data-re="${i.sku}">Reordenar ${i.max-i.hay}</button>`:""}</div></td></tr>`).join("")}</tbody></table></div></div></div>`;
+        root.querySelector("#q").oninput=e=>{const q=e.target.value.toLowerCase(); root.querySelectorAll("#tb tr").forEach(tr=>tr.style.display=tr.dataset.k.includes(q)?"":"none");};
+        root.querySelectorAll("[data-cont]").forEach(b=>b.onclick=()=>conteo(item(b.dataset.cont),refrescar));
+        root.querySelectorAll("[data-re]").forEach(b=>b.onclick=()=>reordenar(item(b.dataset.re),refrescar));
+      }
+    },
+    {
+      id:"surtido", nombre:"Surtido", ic:"🗂️", titulo:"Órdenes de surtido", sub:"El almacenista escanea cada ubicación; el sistema descuenta y cierra",
+      badge:()=>S.surtidos.filter(o=>o.estado!=="cerrado").length,
+      accion:{txt:"+ Orden de surtido", fn:nuevoSurtido},
+      render(root, refrescar){
+        root.innerHTML = S.surtidos.map(os=>`
+          <div class="panel"><div class="panel-h"><h2>${esc(os.folio)} · ${esc(os.cliente)}</h2><span class="sub">${os.lineas.filter(l=>l[2]).length}/${os.lineas.length} líneas</span><div class="right">${os.estado==="cerrado"?'<span class="tag ok">Cerrado · en andén</span>':'<span class="tag info">En proceso</span>'}</div></div>
+          <div class="panel-b flush"><table class="tbl"><thead><tr><th>Ir a</th><th>Producto</th><th class="num">Tomar</th><th></th></tr></thead><tbody>
+            ${os.lineas.map((l,ix)=>{const i=item(l[0]);return `<tr><td><span class="tag neutral">${i.ub}</span></td><td><b>${esc(i.n)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${i.sku} · quedan ${i.hay}</span></td><td class="num">${l[1]} ${i.u}</td><td>${l[2]?'<span class="tag ok">Tomado</span>':`<button class="btn sm primary" data-t="${os.folio}|${ix}">Escanear ✓</button>`}</td></tr>`;}).join("")}
+          </tbody></table></div></div>`).join("");
+        root.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{const [f,ix]=b.dataset.t.split("|"); tomarLinea(S.surtidos.find(o=>o.folio===f),+ix,refrescar);});
+      }
+    },
+    {
+      id:"recepcion", nombre:"Recepción", ic:"🚚", titulo:"Recepción de mercancía", sub:"Contra la orden de compra: las discrepancias se van solas a compras",
+      badge:()=>S.recepciones.filter(r=>r.estado==="pendiente").length,
+      render(root, refrescar){
+        root.innerHTML = `<div class="panel"><div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>OC</th><th>Proveedor</th><th>Esperado</th><th>Estado</th><th></th></tr></thead><tbody>
+          ${S.recepciones.map(r=>`<tr><td><b>${esc(r.oc)}</b></td><td>${esc(r.prov)}</td><td>${r.lineas.map(l=>miles(l[1])+"× "+esc(item(l[0]).n)).join("<br>")}</td>
+            <td>${r.estado==="pendiente"?'<span class="tag warn">Por recibir</span>':r.disc?'<span class="tag bad">'+r.disc+' discrepancia(s)</span>':'<span class="tag ok">Recibida completa</span>'}</td>
+            <td>${r.estado==="pendiente"?`<button class="btn sm primary" data-rec="${esc(r.oc)}">Recibir</button>`:""}</td></tr>`).join("")}</tbody></table></div></div></div>
+          <div class="note info"><span class="ic">📄</span><div><b>Compras libera el pago con la entrada confirmada</b><span>Si llegó menos, la diferencia se reclama al proveedor con la evidencia del almacén.</span></div></div>`;
+        root.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>recibir(S.recepciones.find(r=>r.oc===b.dataset.rec),refrescar));
+      }
+    },
+    {
+      id:"kardex", nombre:"Movimientos", ic:"📒", titulo:"Kárdex", sub:"Cada entrada, salida, ajuste y conteo, con quién y cuándo",
+      render(root){
+        root.innerHTML = `<div class="panel"><div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Tipo</th><th>Referencia</th><th>Producto</th><th class="num">Cantidad</th></tr></thead><tbody>
+          ${S.movimientos.map(m=>`<tr><td>${m.f}</td><td><span class="tag ${m.t==="Entrada"?"ok":m.t==="Salida"?"info":m.t==="Ajuste"?"warn":"neutral"}">${m.t}</span></td><td>${esc(m.ref)}</td><td>${esc(item(m.sku).n)}</td><td class="num" style="color:${m.q>0?"var(--ok)":m.q<0?"var(--bad)":"inherit"}">${m.q>0?"+":""}${m.q}</td></tr>`).join("")}</tbody></table></div></div></div>`;
+      }
+    },
+  ],
+};
+startDemo(DEMO);
+</script>
+</body>
+</html>

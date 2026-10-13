@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Química Industrial del Bajío · Portal B2B — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Portal de clientes de un fabricante industrial, visto desde el lado del cliente. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+/* ---------------- Estado ---------------- */
+const dias = n => { const d = new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("es-MX",{day:"numeric",month:"short"}).replace(".",""); };
+const proximaRuta = () => { const d=new Date().getDay(); const delta=d<3?3-d:d<5?5-d:(10-d)%7||7; return dias(delta); };
+let S = {
+  seq: 500, cliente:"Distribuidora Química del Centro", limite:500000, usado:168400,
+  items: [
+    {e:"🧪", n:"Sosa cáustica escamas 25 kg", p:685, hay:240, min:10, u:"saco"},
+    {e:"🧴", n:"Peróxido de hidrógeno 50% · 30 kg", p:1240, hay:36, min:4, u:"garrafón"},
+    {e:"🍋", n:"Ácido cítrico anhidro 25 kg", p:1120, hay:0, min:5, u:"saco", eta:dias(6)},
+    {e:"🛢️", n:"Hipoclorito de sodio 13% · 200 L", p:2350, hay:18, min:2, u:"tambo"},
+    {e:"🧂", n:"Carbonato de sodio 25 kg", p:410, hay:500, min:20, u:"saco"},
+    {e:"⚗️", n:"Ácido sulfúrico 98% · 200 L", p:3180, hay:9, min:1, u:"tambo"},
+  ],
+  pedidos: [
+    {folio:"PED-2026-0498", fecha:dias(-9), total:63150, paso:3, dir:"Planta Celaya", oc:"OC-7702", lineas:[["Sosa cáustica escamas 25 kg",60],["Hipoclorito de sodio 13% · 200 L",8]]},
+    {folio:"PED-2026-0471", fecha:dias(-23), total:84200, paso:3, dir:"Bodega Querétaro", oc:"OC-7688", lineas:[["Carbonato de sodio 25 kg",120],["Peróxido de hidrógeno 50% · 30 kg",28]]},
+  ],
+  facturas: [
+    {f:"A-2026-1180", monto:84200, vence:12, estado:"por vencer", ped:"PED-2026-0498"},
+    {f:"A-2026-1152", monto:84200, vence:-3, estado:"vencida", ped:"PED-2026-0471"},
+    {f:"A-2026-1120", monto:51900, vence:-30, estado:"pagada", ped:"PED-2026-0455"},
+  ],
+};
+const PASOS=["Orden recibida","En preparación","Embarcada","Entregada"];
+const vencidas = () => S.facturas.filter(f=>f.estado==="vencida");
+const disponible = () => S.limite - S.usado;
+const tagPaso = p => `<span class="tag ${p===3?"ok":p===2?"info":"neutral"}">${PASOS[p]}</span>`;
+
+/* ---------------- Flujos ---------------- */
+function nuevaOrden(refrescar){
+  if(vencidas().length){ toast("Hay una factura vencida: págala en Estado de cuenta para liberar nuevas órdenes","⚠️"); DEMO.ir("cuenta"); return; }
+  drawer("Nueva orden", `
+    <div class="note info"><span class="ic">💳</span><div><b>Crédito disponible ${money(disponible())}</b><span>Embarque el ${proximaRuta()} · crédito a 30 días</span></div></div>
+    ${campo("Productos",`<div class="pick">${S.items.map((it,i)=>`<label><input type="checkbox" name="it_${i}" value="1" ${it.hay?"":"disabled"}><b>${it.e} ${esc(it.n)}</b><span>${money(it.p)}/${it.u} · ${it.hay?it.hay+" disp. · mín. "+it.min:"llega "+it.eta}</span><input type="number" name="q_${i}" value="${it.min}" min="${it.min}" max="${it.hay}"></label>`).join("")}</div>`,"Precios pactados para tu empresa · mínimo por producto")}
+    <div class="fc-row">${campo("Entregar en",`<select name="dir">${opciones(["Planta Celaya","Bodega Querétaro"])}</select>`)}${campo("Tu número de OC",`<input name="oc" placeholder="OC-7731">`)}</div>`,
+    d=>{ const lineas=[]; S.items.forEach((it,i)=>{ if(d["it_"+i]){ const q=Math.max(it.min,Math.min(it.hay,parseInt(d["q_"+i]||String(it.min),10))); lineas.push([it.n,q]); } });
+      if(!lineas.length){ toast("Marca al menos un producto","⚠️"); return false; }
+      const sub=lineas.reduce((s,[n,q])=>s+S.items.find(i=>i.n===n).p*q,0), total=Math.round(sub*1.16);
+      if(total>disponible()){ toast("La orden ("+money(total)+") excede tu crédito disponible ("+money(disponible())+")","⚠️"); return false; }
+      lineas.forEach(([n,q])=>{S.items.find(i=>i.n===n).hay-=q;});
+      const p={folio:"PED-"+new Date().getFullYear()+"-"+String(S.seq++).padStart(4,"0"),fecha:dias(0),total,paso:0,dir:d.dir,oc:d.oc,lineas,embarque:proximaRuta()};
+      S.pedidos.unshift(p); S.usado+=total; toast(p.folio+" recibida · embarque el "+p.embarque,"📦"); refrescar();
+      setTimeout(()=>{ if(p.paso===0){ p.paso=1; toast(p.folio+" en preparación en planta","🏭"); refrescar(); } },4000);
+    },{enviar:"Confirmar orden"});
+}
+function avanzar(p, refrescar){
+  if(p.paso>=3) return; p.paso++;
+  if(p.paso===2){ p.guia="7781-"+(2200+S.pedidos.length); toast(p.folio+" embarcada · guía "+p.guia+" · rastreo en vivo","🚛"); }
+  else if(p.paso===3){ toast(p.folio+" entregada en "+p.dir+" · evidencia con firma","✅"); S.facturas.unshift({f:"A-"+new Date().getFullYear()+"-"+(1181+S.pedidos.length),monto:p.total,vence:30,estado:"por vencer",ped:p.folio}); }
+  else toast(p.folio+": "+PASOS[p.paso].toLowerCase(),"🏭");
+  refrescar();
+}
+function pagar(f, refrescar){
+  drawer("Pagar "+f.f, `<div class="ticket"><div class="r"><span>Factura ${f.f}</span><span>${money(f.monto)}</span></div><div class="r"><span>Pedido</span><span>${f.ped}</span></div><div class="r t"><span>Total a pagar</span><span>${money(f.monto)}</span></div></div>
+    ${campo("Forma de pago",`<select name="m">${opciones(["Transferencia SPEI","Cheque","Tarjeta empresarial"])}</select>`)}${campo("Referencia",`<input name="ref" placeholder="Folio de la transferencia">`)}`,
+    d=>{ f.estado="pagada"; S.usado=Math.max(0,S.usado-f.monto); toast(f.f+" pagada · complemento de pago en 24 h","💳"); refrescar(); },{enviar:"Registrar pago"});
+}
+
+/* ---------------- Demo ---------------- */
+const DEMO = {
+  negocio:"Química Industrial del Bajío", rubro:"Portal B2B · "+S.cliente, emoji:"🏢",
+  estado:{clave:"portal", get:()=>S, set:o=>{S=o;}},
+  secciones:[
+    {
+      id:"pedidos", nombre:"Mis órdenes", ic:"📦", titulo:"Mis órdenes", sub:"Crea órdenes con tus precios pactados y síguelas hasta la entrega",
+      badge:()=>S.pedidos.filter(p=>p.paso<3).length,
+      accion:{txt:"+ Nueva orden", fn:nuevaOrden},
+      render(root, refrescar){
+        const uso=Math.min(1,S.usado/S.limite);
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Crédito disponible</div><div class="val">${money(disponible())}</div><div class="delta flat">de ${money(S.limite)} · ${Math.round(uso*100)}% usado</div></div>
+            <div class="kpi"><div class="lbl">Órdenes en curso</div><div class="val">${S.pedidos.filter(p=>p.paso<3).length}</div><div class="delta flat">próximo embarque ${proximaRuta()}</div></div>
+            <div class="kpi"><div class="lbl">Facturas vencidas</div><div class="val">${vencidas().length}</div><div class="delta ${vencidas().length?"down":"up"}">${vencidas().length?"bloquean órdenes nuevas":"al corriente"}</div></div>
+            <div class="kpi"><div class="lbl">Comprado este año</div><div class="val">${money(S.pedidos.reduce((s,p)=>s+p.total,0)+412000)}</div><div class="delta up">▲ 18% vs. año anterior</div></div>
+          </div>
+          <div class="panel"><div class="panel-h"><h2>Órdenes</h2><span class="sub">"Avanzar" simula a la planta preparando y embarcando</span></div>
+          <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Folio</th><th>Productos</th><th>Entrega</th><th>Estado</th><th class="num">Total</th><th></th></tr></thead>
+            <tbody>${S.pedidos.map(p=>`<tr><td><b>${esc(p.folio)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${p.fecha}${p.oc?" · tu OC "+esc(p.oc):""}</span></td><td>${p.lineas.map(([n,q])=>`${q}× ${esc(n)}`).join("<br>")}</td><td>${esc(p.dir)}${p.guia?'<br><span style="font-size:.8rem;color:var(--ink-3)">guía '+p.guia+'</span>':""}</td><td>${tagPaso(p.paso)}</td><td class="num">${money(p.total)}</td>
+              <td>${p.paso<3?`<button class="btn sm primary" data-av="${esc(p.folio)}">Avanzar →</button>`:`<button class="btn sm" data-rep="${esc(p.folio)}">Repetir</button>`}</td></tr>`).join("")}</tbody></table></div></div></div>`;
+        root.querySelectorAll("[data-av]").forEach(b=>b.onclick=()=>avanzar(S.pedidos.find(p=>p.folio===b.dataset.av),refrescar));
+        root.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>{ nuevaOrden(refrescar); });
+      }
+    },
+    {
+      id:"catalogo", nombre:"Catálogo y precios", ic:"🏷️", titulo:"Catálogo y precios pactados", sub:"Existencias reales de planta: lo que ves es lo que se puede embarcar",
+      render(root){
+        root.innerHTML = `<div class="panel"><div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Producto</th><th class="num">Tu precio</th><th>Existencia</th><th>Mínimo</th></tr></thead><tbody>
+          ${S.items.map(it=>`<tr><td><div class="cellmain"><div class="em">${it.e}</div><div><b>${esc(it.n)}</b><span>hoja de seguridad y ficha técnica disponibles</span></div></div></td><td class="num">${money(it.p)}/${it.u}</td><td>${it.hay?(it.hay<20?'<span class="tag warn">Quedan '+it.hay+'</span>':'<span class="tag ok">'+it.hay+' '+it.u+'s</span>'):'<span class="tag bad">Sin existencia · llega '+it.eta+'</span>'}</td><td>${it.min} ${it.u}s</td></tr>`).join("")}</tbody></table></div></div></div>
+          <div class="note info"><span class="ic">🔒</span><div><b>Cada cliente ve solo sus precios</b><span>Los pactados en su contrato, con su crédito y sus direcciones de entrega. Nada que capturar dos veces en ventas.</span></div></div>`;
+      }
+    },
+    {
+      id:"cuenta", nombre:"Estado de cuenta", ic:"🧾", titulo:"Estado de cuenta", sub:"Facturas, complementos y pagos, sin pedirlos por correo",
+      badge:()=>vencidas().length,
+      render(root, refrescar){
+        root.innerHTML = `<div class="panel"><div class="panel-h"><h2>Facturas</h2><span class="sub">Saldo ${money(S.facturas.filter(f=>f.estado!=="pagada").reduce((s,f)=>s+f.monto,0))}</span></div>
+          <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Factura</th><th>Pedido</th><th>Vencimiento</th><th>Estado</th><th class="num">Monto</th><th></th></tr></thead><tbody>
+          ${S.facturas.map(f=>`<tr><td><b>${esc(f.f)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">CFDI 4.0</span></td><td>${esc(f.ped)}</td><td>${f.estado==="pagada"?"—":dias(f.vence)}</td><td>${f.estado==="pagada"?'<span class="tag ok">Pagada</span>':f.estado==="vencida"?'<span class="tag bad">Vencida hace '+(-f.vence)+' días</span>':'<span class="tag warn">Vence en '+f.vence+' días</span>'}</td><td class="num">${money(f.monto)}</td>
+            <td><div class="actions"><button class="btn sm" data-x="${esc(f.f)}">XML</button><button class="btn sm" data-p="${esc(f.f)}">PDF</button>${f.estado!=="pagada"?`<button class="btn sm primary" data-pay="${esc(f.f)}">Pagar</button>`:""}</div></td></tr>`).join("")}</tbody></table></div></div></div>
+          ${vencidas().length?`<div class="note bad"><span class="ic">⚠️</span><div><b>Una factura vencida bloquea órdenes nuevas</b><span>Al registrar el pago se libera el crédito en el momento.</span></div></div>`:`<div class="note ok"><span class="ic">✅</span><div><b>Al corriente</b><span>Crédito disponible ${money(disponible())}.</span></div></div>`}`;
+        root.querySelectorAll("[data-x],[data-p]").forEach(b=>b.onclick=()=>toast((b.dataset.x||b.dataset.p)+(b.dataset.x?".xml":".pdf")+" descargado","📄"));
+        root.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>pagar(S.facturas.find(f=>f.f===b.dataset.pay),refrescar));
+      }
+    },
+  ],
+};
+startDemo(DEMO);
+</script>
+</body>
+</html>

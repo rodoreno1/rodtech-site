@@ -327,12 +327,12 @@ document.querySelectorAll(".service").forEach(card=>{
    Fichas que representan cada demo. Al hacer clic abren el demo real,
    así que la decoración también sirve de puerta de entrada. */
 const TILES = [
-  {id:"restaurante",  em:"🍽️", n:"La Cocina de Rosa",       rows:[["Tacos de pastor","$95"],["Agua del día 1 L","$45"],["Listo en","18 min"]], foot:"Menú digital · Mesa 4"},
-  {id:"ferreteria",   em:"🔩", n:"Ferretería El Tornillo",  rows:[["Cemento gris 50 kg","$238"],["Varilla 3/8\"","$165"],["Descuento por volumen","−5%"]], foot:"Cotizador de obra"},
-  {id:"farmacia",     em:"💊", n:"Farmacia San Miguel",     rows:[["Caduca en 12 días","⏰"],["Stock bajo","📦"],["Pedido sugerido","🤖"]], foot:"Panel de control"},
-  {id:"distribuidora",em:"🚚", n:"Distribuidora del Centro",rows:[["Aceite vegetal 1L","$310"],["Atún en agua","$620"],["Crédito disponible","42%"]], foot:"Portal de clientes"},
-  {id:"boutique",     em:"👗", n:"Boutique Alma",           rows:[["Vestido floral","$549"],["Chamarra mezclilla","$729"],["Apartado A-217","✓"]], foot:"Catálogo + apartados"},
-  {id:"taller",       em:"🔧", n:"Taller Rodríguez",        rows:[["Orden A-1042","70%"],["Balatas delanteras","$1,250"],["Chat con el mecánico","💬"]], foot:"Estatus en vivo"}
+  {id:"importaciones",em:"🚢", n:"Grupo Altamira",           rows:[["MSKU-447812-3","En aduana"],["ETA a bodega","3 días"],["Costo landed / pz","$1,284"]], foot:"Embarques en tránsito"},
+  {id:"flotilla",     em:"🚛", n:"Transportes Río Bravo",    rows:[["Unidad 14 · Ruta Norte","En ruta"],["Entregas de hoy","14/26"],["Retrasos","1"]], foot:"Torre de control"},
+  {id:"almacen",      em:"📦", n:"Almacén Central",          rows:[["44-118 · A-07-2","320 pz"],["Por surtir","4 líneas"],["Bajo mínimo","4 SKU"]], foot:"Inventario en vivo"},
+  {id:"cotizador",    em:"🧾", n:"Aceros del Norte",         rows:[["COT-2026-0912","$184,500"],["Tipo de cambio","18.42"],["Vigencia","7 días"]], foot:"Cotizador automático"},
+  {id:"portal",       em:"🏢", n:"Química del Bajío",        rows:[["Orden PED-0498","Embarcada"],["Crédito disponible","$331,600"],["Facturas vencidas","1"]], foot:"Portal de clientes"},
+  {id:"produccion",   em:"⚙️", n:"Metalmecánica Delta",      rows:[["OP-2041 · Bastidor","Pintura 62%"],["Piezas buenas","248/400"],["Merma","1.5%"]], foot:"Piso de producción"}
 ];
 
 

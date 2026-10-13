@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Aceros y Perfiles del Norte — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para un distribuidor industrial. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+/* ---------------- Estado ---------------- */
+const TC = 18.42;
+const usd = n => "USD " + Number(n).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+const dias = n => { const d = new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("es-MX",{day:"numeric",month:"short"}).replace(".",""); };
+let S = {
+  seq: 913,
+  clientes: [
+    {n:"Constructora Vega", nivel:"Proyecto", desc:8, credito:30, contacto:"Ing. Mariana Vega"},
+    {n:"Herrería Industrial MTY", nivel:"Distribuidor", desc:5, credito:15, contacto:"Sr. Raúl Treviño"},
+    {n:"Estructuras Metálicas del Golfo", nivel:"Distribuidor", desc:5, credito:30, contacto:"Lic. Ana Salinas"},
+    {n:"Nuevo cliente", nivel:"Lista", desc:0, credito:0, contacto:"—"},
+  ],
+  cat: [
+    {n:"Viga IPR 8\" × 31 lb", u:"ton", p:24800, hay:42, ent:"inmediato"},
+    {n:"PTR 2\" × 2\" cal. 14", u:"ton", p:26900, hay:18, ent:"inmediato"},
+    {n:"Lámina galvanizada cal. 22", u:"ton", p:29400, hay:9, ent:"3 días"},
+    {n:"Tubería negra 4\" ced. 40", u:"ton", p:31200, hay:0, ent:"sobre pedido · 12 días"},
+    {n:"Varilla corrugada 3/8\"", u:"ton", p:17950, hay:120, ent:"inmediato"},
+    {n:"Placa A-36 1/2\" (ref. USD)", u:"ton", usd:1540, hay:6, ent:"3 días"},
+    {n:"Ángulo 2\" × 1/4\"", u:"ton", p:25600, hay:22, ent:"inmediato"},
+  ],
+  cots: [
+    {folio:"COT-2026-0912", cli:"Constructora Vega", fecha:dias(-2), ton:14, total:184500, estado:2},
+    {folio:"COT-2026-0909", cli:"Herrería Industrial MTY", fecha:dias(-4), ton:6, total:96180, estado:3, pedido:"PED-2026-0541"},
+    {folio:"COT-2026-0905", cli:"Estructuras Metálicas del Golfo", fecha:dias(-7), ton:22, total:402300, estado:1},
+    {folio:"COT-2026-0898", cli:"Nuevo cliente", fecha:dias(-9), ton:2, total:41700, estado:0},
+  ],
+};
+const ESTADOS=["Enviada","Vista","Aceptada","Pedido"];
+const tagEst = e => `<span class="tag ${e===3?"ok":e===2?"info":e===1?"neutral":"warn"}">${ESTADOS[e]}</span>`;
+const precio = it => it.usd ? Math.round(it.usd*TC) : it.p;
+const calc = (cli, lineas) => {
+  const sub = lineas.reduce((s,[n,q])=>s+precio(S.cat.find(c=>c.n===n))*q,0), ton = lineas.reduce((s,[,q])=>s+q,0);
+  const dn = Math.round(sub*cli.desc/100), dv = ton>=10?Math.round((sub-dn)*0.03):0, iva = Math.round((sub-dn-dv)*0.16);
+  const ent = lineas.some(([n])=>S.cat.find(c=>c.n===n).hay===0)?"12 días (hay partidas sobre pedido)":lineas.some(([n])=>S.cat.find(c=>c.n===n).ent==="3 días")?"3 días hábiles":"inmediata";
+  return {sub,ton,dn,dv,iva,total:sub-dn-dv+iva,ent};
+};
+const tasa = () => Math.round(S.cots.filter(c=>c.estado>=2).length/S.cots.length*100);
+
+/* ---------------- Flujos ---------------- */
+function nuevaCot(refrescar){
+  drawer("Nueva cotización", `
+    ${campo("Cliente",`<select name="cli">${opciones(S.clientes.map(c=>[c.n,c.n+" · "+c.nivel+(c.desc?" −"+c.desc+"%":"")]))}</select>`,"El nivel fija el descuento solo")}
+    ${campo("Partidas",`<div class="pick">${S.cat.map((c,i)=>`<label><input type="checkbox" name="it_${i}" value="1"><b>${esc(c.n)}</b><span>${money(precio(c))}/t · ${c.hay?c.hay+" t":"sobre pedido"}</span><input type="number" name="q_${i}" value="1" min="1" max="200"></label>`).join("")}</div>`,"Toneladas por partida · 10 t o más −3% adicional")}
+    ${campo("Referencia del cliente",`<input name="ref" placeholder="Ej. Obra Torre Fundidora, nave 3">`)}`,
+    d=>{ const lineas=[]; S.cat.forEach((c,i)=>{ if(d["it_"+i]) lineas.push([c.n,Math.max(1,parseInt(d["q_"+i]||"1",10))]); });
+      if(!lineas.length){ toast("Marca al menos una partida","⚠️"); return false; }
+      const cli=S.clientes.find(c=>c.n===d.cli); const r=calc(cli,lineas);
+      const cot={folio:"COT-"+new Date().getFullYear()+"-"+String(S.seq++).padStart(4,"0"),cli:cli.n,fecha:dias(0),ton:r.ton,total:r.total,estado:0,lineas,ref:d.ref,ent:r.ent};
+      S.cots.unshift(cot); toast(cot.folio+" generada en 12 s · enviada por correo y WhatsApp","⚡"); refrescar();
+      setTimeout(()=>{ if(cot.estado===0){ cot.estado=1; toast(cli.n+" abrió "+cot.folio,"👀"); refrescar(); } },4000);
+    },{enviar:"Generar y enviar"});
+}
+function avanzar(c, refrescar){
+  if(c.estado===0){ c.estado=1; toast(c.cli+" abrió "+c.folio,"👀"); }
+  else if(c.estado===1){ c.estado=2; toast(c.cli+" aceptó "+c.folio+" con firma electrónica","✅"); }
+  else if(c.estado===2){ c.estado=3; c.pedido="PED-"+new Date().getFullYear()+"-"+(540+S.cots.length); toast("Pedido "+c.pedido+" creado · almacén tiene la orden de surtido","📦"); }
+  refrescar();
+}
+function verCot(c){
+  const cli=S.clientes.find(x=>x.n===c.cli)||S.clientes[3]; const lineas=c.lineas||[["Viga IPR 8\" × 31 lb",Math.max(1,Math.round(c.ton*0.6))],["Varilla corrugada 3/8\"",Math.max(1,c.ton-Math.round(c.ton*0.6))]]; const r=calc(cli,lineas);
+  drawer(c.folio+" · "+c.cli, `<div class="ticket">
+    <div class="r"><b>ACEROS Y PERFILES DEL NORTE</b><span>${c.fecha}</span></div><div class="r"><span>${esc(c.cli)} · nivel ${cli.nivel}</span><span>TC ${TC.toFixed(2)}</span></div><div style="height:8px"></div>
+    ${lineas.map(([n,q])=>`<div class="r"><span>${q} t × ${esc(n)}</span><span>${money(precio(S.cat.find(x=>x.n===n))*q)}</span></div>`).join("")}
+    <div class="r t"><span>Subtotal</span><span>${money(r.sub)}</span></div>${r.dn?`<div class="r"><span>Nivel ${cli.nivel} −${cli.desc}%</span><span>−${money(r.dn)}</span></div>`:""}${r.dv?`<div class="r"><span>Volumen 10 t+ −3%</span><span>−${money(r.dv)}</span></div>`:""}
+    <div class="r"><span>IVA 16%</span><span>${money(r.iva)}</span></div><div class="r t"><span>TOTAL</span><span>${money(r.total)}</span></div>
+    <div class="r"><span>Entrega</span><span>${r.ent}</span></div><div class="r"><span>Vigencia</span><span>7 días · ${dias(7)}</span></div><div class="r"><span>Condiciones</span><span>${cli.credito?"crédito "+cli.credito+" días":"anticipo 50%"}</span></div></div>`,
+    ()=>toast(c.folio+".pdf descargado","📄"),{enviar:"Descargar PDF"});
+}
+function nuevoCliente(refrescar){
+  drawer("Nuevo cliente",`${campo("Razón social",`<input name="n" required>`)}<div class="fc-row">${campo("Nivel de precio",`<select name="nivel">${opciones([["Lista","Lista (sin descuento)"],["Distribuidor","Distribuidor −5%"],["Proyecto","Proyecto −8%"]])}</select>`)}${campo("Crédito (días)",`<select name="cr">${opciones([["0","Sin crédito"],["15","15 días"],["30","30 días"]])}</select>`)}</div>${campo("Contacto",`<input name="c" placeholder="Nombre y puesto">`)}`,
+    d=>{ S.clientes.splice(S.clientes.length-1,0,{n:d.n,nivel:d.nivel,desc:d.nivel==="Proyecto"?8:d.nivel==="Distribuidor"?5:0,credito:+d.cr,contacto:d.c||"—"}); toast(d.n+" dado de alta con nivel "+d.nivel,"🤝"); refrescar(); });
+}
+
+/* ---------------- Demo ---------------- */
+const DEMO = {
+  negocio:"Aceros y Perfiles del Norte", rubro:"Distribuidor industrial", emoji:"🧾",
+  estado:{clave:"cotizador", get:()=>S, set:o=>{S=o;}},
+  secciones:[
+    {
+      id:"cotizaciones", nombre:"Cotizaciones", ic:"🧾", titulo:"Cotizaciones", sub:"Listas en segundos, con seguimiento hasta el pedido",
+      badge:()=>S.cots.filter(c=>c.estado===2).length,
+      accion:{txt:"+ Nueva cotización", fn:nuevaCot},
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Cotizado este mes</div><div class="val">${money(S.cots.reduce((s,c)=>s+c.total,0))}</div><div class="delta flat">${S.cots.length} cotizaciones</div></div>
+            <div class="kpi"><div class="lbl">Tasa de cierre</div><div class="val">${tasa()}%</div><div class="delta up">▲ vs. 31% cotizando a mano</div></div>
+            <div class="kpi"><div class="lbl">Tiempo de respuesta</div><div class="val">12 s</div><div class="delta up">antes: 2 días</div></div>
+            <div class="kpi"><div class="lbl">Tipo de cambio</div><div class="val">${TC.toFixed(2)}</div><div class="delta flat">DOF · partidas en USD</div></div>
+          </div>
+          <div class="panel"><div class="panel-h"><h2>Seguimiento</h2><span class="sub">"Avanzar" simula al cliente abriendo y aceptando</span></div>
+          <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Folio</th><th>Cliente</th><th class="num">Toneladas</th><th class="num">Total</th><th>Estado</th><th></th></tr></thead>
+            <tbody>${S.cots.map(c=>`<tr><td><b>${esc(c.folio)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${c.fecha} · vigente hasta ${dias(7)}</span></td><td>${esc(c.cli)}${c.ref?'<br><span style="font-size:.8rem;color:var(--ink-3)">'+esc(c.ref)+'</span>':""}</td><td class="num">${c.ton} t</td><td class="num">${money(c.total)}</td>
+              <td>${tagEst(c.estado)}${c.pedido?'<br><span style="font-size:.8rem;color:var(--ink-3)">'+c.pedido+'</span>':""}</td>
+              <td><div class="actions"><button class="btn sm" data-ver="${esc(c.folio)}">Ver</button>${c.estado<3?`<button class="btn sm primary" data-av="${esc(c.folio)}">${c.estado===2?"Convertir en pedido":"Avanzar →"}</button>`:""}${c.estado<2?`<button class="btn sm" data-rec="${esc(c.folio)}">Recordar</button>`:""}</div></td></tr>`).join("")}</tbody></table></div></div></div>`;
+        root.querySelectorAll("[data-av]").forEach(b=>b.onclick=()=>avanzar(S.cots.find(c=>c.folio===b.dataset.av),refrescar));
+        root.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>verCot(S.cots.find(c=>c.folio===b.dataset.ver)));
+        root.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>toast("Recordatorio enviado por WhatsApp","📲"));
+      }
+    },
+    {
+      id:"precios", nombre:"Lista de precios", ic:"🏷️", titulo:"Lista de precios", sub:"Un solo lugar: el cotizador toma de aquí precios, existencias y tiempos",
+      render(root, refrescar){
+        root.innerHTML = `<div class="panel"><div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Producto</th><th class="num">Lista</th><th class="num">Distribuidor −5%</th><th class="num">Proyecto −8%</th><th>Existencia</th><th>Entrega</th></tr></thead><tbody>
+          ${S.cat.map(c=>`<tr><td><b>${esc(c.n)}</b>${c.usd?'<br><span style="font-size:.8rem;color:var(--ink-3)">'+usd(c.usd)+' × '+TC.toFixed(2)+'</span>':""}</td><td class="num">${money(precio(c))}</td><td class="num">${money(Math.round(precio(c)*0.95))}</td><td class="num">${money(Math.round(precio(c)*0.92))}</td><td>${c.hay?c.hay+" t":'<span class="tag warn">Sobre pedido</span>'}</td><td>${esc(c.ent)}</td></tr>`).join("")}</tbody></table></div></div></div>
+          <div class="note info"><span class="ic">💱</span><div><b>Las partidas referenciadas en dólares se recalculan cada mañana</b><span>Con el tipo de cambio del DOF. Nadie vuelve a cotizar con un precio de hace tres semanas.</span></div></div>`;
+      }
+    },
+    {
+      id:"clientes", nombre:"Clientes", ic:"🏢", titulo:"Clientes", sub:"Nivel de precio y condiciones: el cotizador las aplica sin preguntar",
+      accion:{txt:"+ Cliente", fn:nuevoCliente},
+      render(root){
+        root.innerHTML = `<div class="panel"><div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cliente</th><th>Nivel</th><th>Condiciones</th><th class="num">Cotizaciones</th><th class="num">Cerradas</th></tr></thead><tbody>
+          ${S.clientes.filter(c=>c.n!=="Nuevo cliente").map(c=>{const cs=S.cots.filter(x=>x.cli===c.n);return `<tr><td><b>${esc(c.n)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${esc(c.contacto)}</span></td><td><span class="tag neutral">${c.nivel}${c.desc?" −"+c.desc+"%":""}</span></td><td>${c.credito?"Crédito "+c.credito+" días":"Anticipo 50%"}</td><td class="num">${cs.length}</td><td class="num">${cs.filter(x=>x.estado>=2).length}</td></tr>`;}).join("")}</tbody></table></div></div></div>`;
+      }
+    },
+  ],
+};
+startDemo(DEMO);
+</script>
+</body>
+</html>

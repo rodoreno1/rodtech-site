@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Grupo Altamira — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para una importadora. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+/* ---------------- Estado (se guarda en el navegador) ---------------- */
+const TC = 18.42;
+const usd = n => "USD " + Number(n).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+const dias = n => { const d = new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("es-MX",{day:"numeric",month:"short"}).replace(".",""); };
+const ETAPAS = ["Zarpó del origen","En tránsito marítimo","En aduana","Liberado · en camino","Recibido en bodega"];
+let S = {
+  seqOC: 332, seqEmb: 5,
+  proveedores: [
+    {n:"Shenzhen Hengli Tools", pais:"China", puerto:"Shenzhen → Manzanillo", transito:34, incoterm:"FOB", ocs:9},
+    {n:"Ningbo Steelworks Co.", pais:"China", puerto:"Ningbo → Manzanillo", transito:32, incoterm:"FOB", ocs:6},
+    {n:"Houston Pump Supply", pais:"EE.UU.", puerto:"Houston → Nuevo Laredo (terrestre)", transito:8, incoterm:"EXW", ocs:4},
+  ],
+  catalogo: [
+    {n:"Taladro percutor 1/2\"", p:38.5, moq:200, prov:"Shenzhen Hengli Tools"},
+    {n:"Esmeril angular 4 1/2\"", p:27.9, moq:200, prov:"Shenzhen Hengli Tools"},
+    {n:"Rodamiento 6205-2RS", p:1.15, moq:1000, prov:"Ningbo Steelworks Co."},
+    {n:"Banda en V A-42", p:2.4, moq:500, prov:"Ningbo Steelworks Co."},
+    {n:"Bomba centrífuga 5 HP", p:2580, moq:4, prov:"Houston Pump Supply"},
+  ],
+  embarques: [
+    {id:"MSKU-447812-3", prov:"Shenzhen Hengli Tools", desc:"Taladros y esmeriles", pz:1200, fob:48600, flete:2900, igi:5, etapa:2, eta:3, oc:"OC-2026-0318", cont:"40' HC", ped:"26 47 3421 6012345"},
+    {id:"TGHU-991204-7", prov:"Ningbo Steelworks Co.", desc:"Rodamientos y bandas", pz:3800, fob:31250, flete:2650, igi:10, etapa:1, eta:11, oc:"OC-2026-0322", cont:"20' DV", ped:"—"},
+    {id:"CMAU-205583-1", prov:"Houston Pump Supply", desc:"Bombas centrífugas 5 HP", pz:24, fob:62000, flete:1800, igi:0, etapa:4, eta:0, oc:"OC-2026-0301", cont:"Consolidado terrestre", ped:"26 24 3410 6009871"},
+    {id:"OOLU-883421-0", prov:"Shenzhen Hengli Tools", desc:"Refacciones y accesorios", pz:5400, fob:12800, flete:2400, igi:5, etapa:0, eta:26, oc:"OC-2026-0331", cont:"20' DV", ped:"—"},
+  ],
+  ocs: [
+    {folio:"OC-2026-0331", prov:"Shenzhen Hengli Tools", inc:"FOB", partidas:[["Refacciones y accesorios",5400,2.37]], estado:"embarcada", fecha:dias(-31)},
+    {folio:"OC-2026-0322", prov:"Ningbo Steelworks Co.", inc:"FOB", partidas:[["Rodamiento 6205-2RS",3000,1.15],["Banda en V A-42",800,2.4]], estado:"embarcada", fecha:dias(-40)},
+    {folio:"OC-2026-0329", prov:"Houston Pump Supply", inc:"EXW", partidas:[["Bomba centrífuga 5 HP",12,2580]], estado:"confirmada", fecha:dias(-6)},
+  ],
+};
+const totalOC = o => o.partidas.reduce((s,[,q,p])=>s+q*p,0);
+const enTransito = () => S.embarques.filter(e=>e.etapa<4);
+const costeo = e => {
+  const fobMX=e.fob*TC, fleteMX=e.flete*TC, seguro=Math.round(fobMX*0.004), base=fobMX+fleteMX+seguro;
+  const igi=Math.round(base*e.igi/100), dta=Math.round(base*0.008), iva=Math.round((base+igi+dta)*0.16), aa=Math.round(base*0.0045)+6500;
+  const total=Math.round(base+igi+dta+iva+aa);
+  return {fobMX:Math.round(fobMX),fleteMX:Math.round(fleteMX),seguro,igi,dta,iva,aa,total,unit:total/e.pz};
+};
+const tagEtapa = e => e.etapa===4?'<span class="tag ok">En bodega</span>':e.etapa===2?'<span class="tag warn">En aduana</span>':e.etapa===3?'<span class="tag info">Liberado</span>':'<span class="tag neutral">En tránsito</span>';
+
+/* ---------------- Flujos ---------------- */
+function nuevaOC(refrescar){
+  drawer("Nueva orden de compra", `
+    <div class="fc-row">
+      ${campo("Proveedor",`<select name="prov">${opciones(S.proveedores.map(p=>p.n))}</select>`)}
+      ${campo("Incoterm",`<select name="inc">${opciones(["FOB","CIF","EXW"])}</select>`)}
+    </div>
+    ${campo("Partidas",`<div class="pick">${S.catalogo.map((c,i)=>`
+      <label><input type="checkbox" name="it_${i}" value="1"><b>${esc(c.n)}</b><span>${usd(c.p)} · mín. ${miles(c.moq)}</span>
+      <input type="number" name="q_${i}" value="${c.moq}" min="1" step="${c.moq>=200?100:1}"></label>`).join("")}</div>`,"Marca las partidas y ajusta cantidades")}
+    ${campo("Notas al proveedor",`<input name="nota" placeholder="Empaque en tarimas fumigadas, etiquetas en español…">`)}
+  `, d=>{
+    const partidas=[]; S.catalogo.forEach((c,i)=>{ if(d["it_"+i]) partidas.push([c.n, Math.max(1,parseInt(d["q_"+i]||"1",10)), c.p]); });
+    if(!partidas.length){ toast("Marca al menos una partida","⚠️"); return false; }
+    const o={folio:"OC-"+new Date().getFullYear()+"-"+String(S.seqOC++).padStart(4,"0"), prov:d.prov, inc:d.inc, partidas, estado:"enviada", fecha:dias(0), nota:d.nota};
+    S.ocs.unshift(o); toast(o.folio+" enviada a "+d.prov+" · "+usd(totalOC(o)),"📝"); refrescar();
+  },{enviar:"Enviar al proveedor"});
+}
+function confirmarOC(o, refrescar){
+  const p=S.proveedores.find(x=>x.n===o.prov);
+  o.estado="confirmada";
+  toast(o.folio+" confirmada · el proveedor promete embarcar en 10 días","✅"); refrescar();
+}
+function embarcarOC(o, refrescar){
+  const p=S.proveedores.find(x=>x.n===o.prov);
+  const pz=o.partidas.reduce((s,[,q])=>s+q,0);
+  const e={id:["MSKU","TGHU","CMAU","OOLU","HLXU"][S.seqEmb%5]+"-"+(100000+Math.floor(Math.random()*899999))+"-"+(S.seqEmb%10), prov:o.prov, desc:o.partidas.map(x=>x[0]).join(", "), pz, fob:totalOC(o), flete:p.pais==="China"?2800:1800, igi:5, etapa:0, eta:p.transito, oc:o.folio, cont:p.pais==="China"?"40' HC":"Consolidado terrestre", ped:"—"};
+  S.seqEmb++; o.estado="embarcada"; S.embarques.unshift(e);
+  toast("Embarque "+e.id+" creado · ETA "+dias(e.eta),"🚢"); refrescar();
+}
+function avanzar(e, refrescar){
+  if(e.etapa>=4) return;
+  e.etapa++; if(e.etapa===2) e.ped="26 47 "+(3000+Math.floor(Math.random()*999))+" 60"+(10000+Math.floor(Math.random()*89999)); e.eta=Math.max(0,Math.round(e.eta*0.6));
+  if(e.etapa===4) e.eta=0;
+  toast(e.id+": "+ETAPAS[e.etapa].toLowerCase(),"🛃"); refrescar();
+}
+function nuevoProveedor(refrescar){
+  drawer("Nuevo proveedor",`
+    ${campo("Razón social",`<input name="n" required placeholder="Ej. Guangzhou Motors Ltd.">`)}
+    <div class="fc-row">${campo("País",`<select name="pais">${opciones(["China","EE.UU.","Alemania","India","Taiwán"])}</select>`)}${campo("Incoterm habitual",`<select name="inc">${opciones(["FOB","CIF","EXW","DAP"])}</select>`)}</div>
+    <div class="fc-row">${campo("Puerto / ruta",`<input name="puerto" placeholder="Shanghái → Manzanillo">`)}${campo("Tránsito (días)",`<input name="transito" type="number" value="30" min="1">`)}</div>`,
+    d=>{ S.proveedores.push({n:d.n,pais:d.pais,puerto:d.puerto||"—",transito:+d.transito||30,incoterm:d.inc,ocs:0}); toast(d.n+" dado de alta","🤝"); refrescar(); });
+}
+
+/* ---------------- Demo ---------------- */
+const DEMO = {
+  negocio:"Grupo Altamira", rubro:"Importadora · maquinaria ligera", emoji:"🚢",
+  estado:{clave:"importaciones", get:()=>S, set:o=>{S=o;}},
+  secciones:[
+    {
+      id:"embarques", nombre:"Embarques", ic:"🚢", titulo:"Embarques en curso", sub:"Del proveedor a tu bodega, con ETA y pedimento",
+      badge:()=>enTransito().length,
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">En tránsito</div><div class="val">${enTransito().length}</div><div class="delta flat">${usd(enTransito().reduce((s,e)=>s+e.fob,0))} FOB</div></div>
+            <div class="kpi"><div class="lbl">En aduana</div><div class="val">${S.embarques.filter(e=>e.etapa===2).length}</div><div class="delta ${S.embarques.some(e=>e.etapa===2)?"down":"flat"}">${S.embarques.some(e=>e.etapa===2)?"pedimento en curso":"ninguno"}</div></div>
+            <div class="kpi"><div class="lbl">Tipo de cambio</div><div class="val">${TC.toFixed(2)}</div><div class="delta flat">DOF de hoy · recalcula el costeo</div></div>
+            <div class="kpi"><div class="lbl">Próxima llegada</div><div class="val">${enTransito().length?dias(Math.min(...enTransito().map(e=>e.eta))):"—"}</div><div class="delta flat">${enTransito().length?enTransito().sort((a,b)=>a.eta-b.eta)[0].id:"sin embarques"}</div></div>
+          </div>
+          <div class="panel"><div class="panel-h"><h2>Contenedores y consolidados</h2><span class="sub">"Avanzar" simula el aviso de la naviera o del agente aduanal</span></div>
+          <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>Embarque</th><th>Contenido</th><th>Etapa</th><th>ETA</th><th class="num">FOB</th><th></th></tr></thead>
+            <tbody>${S.embarques.map(e=>`<tr>
+              <td><div class="cellmain"><div class="em">${e.etapa===4?"🏭":e.etapa===2?"🛃":"🚢"}</div><div><b>${esc(e.id)}</b><span>${esc(e.cont)} · ${esc(e.oc)}</span></div></div></td>
+              <td><b>${esc(e.desc)}</b><br><span style="color:var(--ink-3);font-size:.82rem">${miles(e.pz)} pz · ${esc(e.prov)}</span></td>
+              <td>${tagEtapa(e)}<br><span style="color:var(--ink-3);font-size:.8rem">${e.etapa===2?"Ped. "+esc(e.ped):ETAPAS[e.etapa]}</span></td>
+              <td>${e.etapa===4?"Recibido":e.eta===0?"Hoy":e.eta===1?"Mañana":dias(e.eta)}</td>
+              <td class="num">${usd(e.fob)}</td>
+              <td><div class="actions"><button class="btn sm" data-costeo="${esc(e.id)}">Costeo</button>${e.etapa<4?`<button class="btn sm primary" data-av="${esc(e.id)}">Avanzar →</button>`:""}</div></td>
+            </tr>`).join("")}</tbody></table></div></div></div>`;
+        root.querySelectorAll("[data-av]").forEach(b=>b.onclick=()=>avanzar(S.embarques.find(e=>e.id===b.dataset.av), refrescar));
+        root.querySelectorAll("[data-costeo]").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.costeo; DEMO.ir("costeo"); });
+      }
+    },
+    {
+      id:"costeo", nombre:"Costeo landed", ic:"🧮", titulo:"Costeo landed", sub:"Lo que de verdad cuesta cada pieza puesta en tu bodega",
+      render(root, refrescar){
+        const e = S.embarques.find(x=>x.id===S.sel) || S.embarques[0]; const c = costeo(e);
+        root.innerHTML = `
+          <div class="cols">
+            <div class="panel"><div class="panel-h"><h2>Desglose · ${esc(e.id)}</h2><div class="right"><select class="field" id="selEmb">${opciones(S.embarques.map(x=>[x.id,x.id+" · "+x.desc]),e.id)}</select></div></div>
+              <div class="panel-b flush"><table class="tbl"><tbody>
+                <tr><td>FOB ${usd(e.fob)} × ${TC.toFixed(2)}</td><td class="num">${money(c.fobMX)}</td></tr>
+                <tr><td>Flete internacional ${usd(e.flete)}</td><td class="num">${money(c.fleteMX)}</td></tr>
+                <tr><td>Seguro de carga 0.4%</td><td class="num">${money(c.seguro)}</td></tr>
+                <tr><td>IGI (arancel) ${e.igi}%</td><td class="num">${money(c.igi)}</td></tr>
+                <tr><td>DTA 0.8%</td><td class="num">${money(c.dta)}</td></tr>
+                <tr><td>IVA 16% (sobre base + IGI + DTA)</td><td class="num">${money(c.iva)}</td></tr>
+                <tr><td>Agente aduanal, maniobras y flete local</td><td class="num">${money(c.aa)}</td></tr>
+                <tr><td class="strong">Costo total en bodega</td><td class="num strong">${money(c.total)}</td></tr>
+                <tr><td class="strong">Costo por pieza (${miles(e.pz)} pz)</td><td class="num strong" style="color:var(--ok)">${money(Math.round(c.unit*100)/100)}</td></tr>
+              </tbody></table></div></div>
+            <div>
+              <div class="panel"><div class="panel-h"><h2>Margen sugerido</h2></div><div class="panel-b">
+                ${[25,35,45].map(m=>`<div class="ticket" style="margin-bottom:8px"><div class="r"><span>Margen ${m}%</span><span><b>${money(Math.round(c.unit*(1+m/100)*100)/100)}</b> / pz</span></div></div>`).join("")}
+                <div class="note info"><span class="ic">💡</span><div><b>El costeo se recalcula solo</b><span>Cada día con el tipo de cambio del DOF: la lista de precios nunca se queda vieja.</span></div></div>
+                <div class="actions"><button class="btn primary" id="aVentas">Enviar a ventas</button><button class="btn" id="aExcel">Exportar a Excel</button></div>
+              </div></div>
+            </div>
+          </div>`;
+        root.querySelector("#selEmb").onchange=ev=>{S.sel=ev.target.value; refrescar();};
+        root.querySelector("#aVentas").onclick=()=>toast("Ventas recibió el costo por pieza y la fecha de llegada","📲");
+        root.querySelector("#aExcel").onclick=()=>toast("costeo-"+e.id+".xlsx descargado","📊");
+      }
+    },
+    {
+      id:"ordenes", nombre:"Órdenes de compra", ic:"📝", titulo:"Órdenes de compra", sub:"Al proveedor extranjero, con partidas en USD e incoterm",
+      badge:()=>S.ocs.filter(o=>o.estado!=="embarcada").length,
+      accion:{txt:"+ Orden de compra", fn:nuevaOC},
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="panel"><div class="panel-h"><h2>Órdenes del trimestre</h2><span class="sub">Confirmada → embarcada crea el embarque con su ETA automáticamente</span></div>
+          <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>Folio</th><th>Proveedor</th><th>Partidas</th><th>Estado</th><th class="num">Total</th><th></th></tr></thead>
+            <tbody>${S.ocs.map(o=>`<tr>
+              <td><b>${esc(o.folio)}</b><br><span style="color:var(--ink-3);font-size:.8rem">${o.fecha} · ${o.inc}</span></td>
+              <td>${esc(o.prov)}</td>
+              <td>${o.partidas.map(([n,q])=>`${miles(q)}× ${esc(n)}`).join("<br>")}</td>
+              <td><span class="tag ${o.estado==="embarcada"?"ok":o.estado==="confirmada"?"info":"warn"}">${o.estado[0].toUpperCase()+o.estado.slice(1)}</span></td>
+              <td class="num">${usd(totalOC(o))}</td>
+              <td><div class="actions">${o.estado==="enviada"?`<button class="btn sm primary" data-conf="${esc(o.folio)}">Proveedor confirmó</button>`:o.estado==="confirmada"?`<button class="btn sm primary" data-emb="${esc(o.folio)}">Embarcada</button>`:`<button class="btn sm" data-ver="${esc(o.folio)}">Ver embarque</button>`}</div></td>
+            </tr>`).join("")}</tbody></table></div></div></div>`;
+        root.querySelectorAll("[data-conf]").forEach(b=>b.onclick=()=>confirmarOC(S.ocs.find(o=>o.folio===b.dataset.conf),refrescar));
+        root.querySelectorAll("[data-emb]").forEach(b=>b.onclick=()=>embarcarOC(S.ocs.find(o=>o.folio===b.dataset.emb),refrescar));
+        root.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>DEMO.ir("embarques"));
+      }
+    },
+    {
+      id:"proveedores", nombre:"Proveedores", ic:"🤝", titulo:"Proveedores", sub:"Tiempos de tránsito reales para calcular cada ETA",
+      accion:{txt:"+ Proveedor", fn:nuevoProveedor},
+      render(root){
+        root.innerHTML = `
+          <div class="panel"><div class="panel-b flush"><div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>Proveedor</th><th>País</th><th>Ruta</th><th>Tránsito</th><th>Incoterm</th><th class="num">OC este año</th></tr></thead>
+            <tbody>${S.proveedores.map(p=>`<tr><td><b>${esc(p.n)}</b></td><td>${esc(p.pais)}</td><td>${esc(p.puerto)}</td><td>${p.transito} días</td><td><span class="tag neutral">${esc(p.incoterm)}</span></td><td class="num">${p.ocs+S.ocs.filter(o=>o.prov===p.n).length}</td></tr>`).join("")}</tbody></table></div></div></div>
+          <div class="note info"><span class="ic">📅</span><div><b>El tránsito promedio se aprende solo</b><span>Cada embarque recibido ajusta el promedio del proveedor, y con eso se calcula la ETA de los siguientes.</span></div></div>`;
+      }
+    },
+  ],
+};
+startDemo(DEMO);
+</script>
+</body>
+</html>

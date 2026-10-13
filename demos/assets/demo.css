@@ -288,3 +288,39 @@ body.drawer-open{overflow:hidden}
 .pick label span{white-space:nowrap}
 /* iOS hace zoom al enfocar un campo con letra menor a 16 px */
 @media(max-width:768px){.fc input,.fc select,.fc textarea,.field,.pick input[type=number]{font-size:16px}}
+
+/* ---------- Mapa de flotilla (simulado) ---------- */
+.fmap{
+  position:relative;height:300px;border-radius:var(--radius);overflow:hidden;
+  background:
+    linear-gradient(rgba(91,46,191,.07) 1px,transparent 1px) 0 0/28px 28px,
+    linear-gradient(90deg,rgba(91,46,191,.07) 1px,transparent 1px) 0 0/28px 28px,
+    #F0EEF9;
+  box-shadow:inset 0 0 0 1px var(--line);
+}
+.fmap .road{position:absolute;background:rgba(91,46,191,.10);border-radius:4px}
+.fmap .pin{
+  position:absolute;width:30px;height:30px;border-radius:50% 50% 50% 0;background:var(--brand);
+  transform:translate(-50%,-100%) rotate(-45deg);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 5px 12px rgba(20,15,60,.25);transition:left 1s linear,top 1s linear;cursor:pointer;
+}
+.fmap .pin i{font-style:normal;font-size:.74rem;font-weight:700;color:#fff;transform:rotate(45deg)}
+.fmap .pin.bad{background:var(--bad)}
+.fmap .pin.ok{background:var(--ok)}
+.fmap .pin.off{background:var(--ink-3)}
+.fmap .pin.sel{box-shadow:0 0 0 5px rgba(91,46,191,.25),0 5px 12px rgba(20,15,60,.25)}
+.fmap .base{position:absolute;right:12px;bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:3px 11px;font-size:.8rem;font-weight:700;color:var(--brand)}
+.fmap .lbl{position:absolute;font-size:.72rem;color:var(--ink-3);font-weight:600}
+@media(prefers-reduced-motion:reduce){.fmap .pin{transition:none}}
+.evid{display:inline-flex;gap:6px;align-items:center;font-size:.8rem;color:var(--ink-2)}
+
+/* ---------- Cinta y cabecera en pantallas angostas ----------
+   Con el botón de reinicio, "Demostración · ↺ Reiniciar · ← Volver" ya no
+   cabía en 390 px y la página entera se desbordaba a lo ancho. */
+@media(max-width:560px){
+  .demo-strip{flex-wrap:wrap;row-gap:8px;padding:9px 14px}
+  .demo-strip a{margin-left:auto}
+  .strip-reset{margin-left:auto}
+  .head{flex-wrap:wrap;gap:10px}
+  .head .btn{width:100%;justify-content:center}
+}

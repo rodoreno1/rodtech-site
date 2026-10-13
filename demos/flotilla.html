@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Transportes Río Bravo — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para una empresa de transporte y entregas. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+/* ---------------- Estado ---------------- */
+const hora = () => new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",hour12:false});
+const hoy = () => new Date().toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
+let S = {
+  seqRuta: 118,
+  choferes: [
+    {n:"Beto Márquez", lic:"Federal B · vence "+(new Date().getFullYear()+1), tel:"81 1543 2201", unidad:"Unidad 14"},
+    {n:"Lupe Hernández", lic:"Federal B · vence "+(new Date().getFullYear()+2), tel:"81 1788 0412", unidad:"Unidad 9"},
+    {n:"Carlos Ruiz", lic:"Federal C · vence "+(new Date().getFullYear()), tel:"81 1902 7730", unidad:"Unidad 21"},
+    {n:"Toño Salas", lic:"Federal B · vence "+(new Date().getFullYear()+1), tel:"81 1655 9018", unidad:"Unidad 3"},
+  ],
+  unidades: [
+    {u:"Unidad 14", placas:"RB-4471-A", km:184200, servicio:4800, tipo:"Rabón 7 t"},
+    {u:"Unidad 9", placas:"RB-2210-B", km:231800, servicio:900, tipo:"Rabón 7 t"},
+    {u:"Unidad 21", placas:"RB-6032-C", km:97400, servicio:11200, tipo:"Torton 14 t"},
+    {u:"Unidad 3", placas:"RB-1190-A", km:402100, servicio:-300, tipo:"3.5 t"},
+  ],
+  rutas: [
+    {id:"R-114", u:"Unidad 14", chofer:"Beto Márquez", nombre:"Ruta Norte", estado:"en ruta", x:.62, y:.28, dx:.004, dy:.003,
+      paradas:[["Ferretería Industrial Garza","08:40","08:36",true],["Maquinados del Norte","09:20","09:25",true],["Grupo Acerero Apodaca","10:05","10:02",true],["Bodega Santa Catarina","10:50","10:58",true],["Plásticos Monterrey","11:30","11:27",true],["Fundidora Escobedo","12:10","",false],["Transformadores del Bajío","12:50","",false],["Base","13:30","",false]]},
+    {id:"R-115", u:"Unidad 9", chofer:"Lupe Hernández", nombre:"Ruta Poniente", estado:"retrasado", x:.22, y:.55, dx:.003, dy:-.002, retraso:14,
+      paradas:[["Cementos Regionales","08:30","08:33",true],["Aceros García","09:15","09:12",true],["Maderas y Triplay SA","10:00","10:40",true],["Industrias Lerma","10:45","",false],["Envases del Centro","11:30","",false],["Papelera San Rafael","12:15","",false],["Base","13:00","",false]]},
+    {id:"R-116", u:"Unidad 21", chofer:"Carlos Ruiz", nombre:"Ruta Sur", estado:"entregando", x:.48, y:.72, dx:-.003, dy:.002,
+      paradas:[["Vidriera Guadalupe","08:20","08:18",true],["Tornillería Juárez","09:00","08:55",true],["Galvanizados SA","09:40","09:44",true],["Grupo Vitro Planta 2","10:30","10:28",true],["Empaques Nacionales","11:10","11:05",true],["Base","12:00","",false]]},
+  ],
+  sel:null,
+};
+const hechas = r => r.paradas.filter(p=>p[2]).length;
+const total = r => r.paradas.length;
+const activas = () => S.rutas.filter(r=>r.estado!=="terminada");
+const tagEstado = r => r.estado==="retrasado"?`<span class="tag bad">Retraso ${r.retraso} min</span>`:r.estado==="entregando"?'<span class="tag ok">Entregando</span>':r.estado==="terminada"?'<span class="tag neutral">Terminada</span>':'<span class="tag info">En ruta</span>';
+let timer=null;
+
+/* ---------------- Flujos ---------------- */
+function registrarEntrega(r, refrescar){
+  const i = r.paradas.findIndex(p=>!p[2]); if(i<0) return;
+  const [n,prev] = r.paradas[i];
+  drawer("Registrar entrega · "+n, `
+    <div class="note info"><span class="ic">📍</span><div><b>${esc(r.u)} · ${esc(r.chofer)}</b><span>Parada ${i+1} de ${total(r)} · prevista ${prev}</span></div></div>
+    ${campo("Hora de llegada",`<input name="h" value="${hora()}">`)}
+    ${campo("Evidencia",`<div class="pick">
+      <label><input type="checkbox" name="foto" value="1" checked><b>📷 Foto de la carga entregada</b><span>con GPS</span></label>
+      <label><input type="checkbox" name="firma" value="1" checked><b>✍️ Firma de quien recibe</b><span>en pantalla</span></label>
+      <label><input type="checkbox" name="inc" value="1"><b>⚠️ Incidencia</b><span>faltante o daño</span></label></div>`)}
+    ${campo("Recibió",`<input name="rec" placeholder="Nombre y área (recepción, almacén…)">`)}`,
+    d=>{
+      if(!d.foto||!d.firma){ toast("Sin foto y firma no se puede cerrar la entrega","⚠️"); return false; }
+      r.paradas[i][2]=d.h||hora(); r.paradas[i][3]=true; r.paradas[i][4]=d.inc?"incidencia":"";
+      if(hechas(r)===total(r)){ r.estado="terminada"; toast(r.u+" terminó su ruta","🏁"); }
+      else { r.estado="en ruta"; r.retraso=0; toast("Entrega en "+n+" registrada · evidencia enviada al cliente","✅"); }
+      refrescar();
+    },{enviar:"Confirmar entrega"});
+}
+function nuevaRuta(refrescar){
+  const libres = S.unidades.filter(u=>!activas().some(r=>r.u===u.u));
+  drawer("Nueva ruta", `
+    <div class="fc-row">
+      ${campo("Unidad",`<select name="u">${opciones(libres.length?libres.map(u=>u.u):["Sin unidades libres"])}</select>`)}
+      ${campo("Chofer",`<select name="ch">${opciones(S.choferes.map(c=>c.n))}</select>`)}
+    </div>
+    ${campo("Nombre de la ruta",`<input name="nombre" required placeholder="Ej. Ruta Oriente">`)}
+    ${campo("Paradas (una por renglón, con hora)",`<textarea name="paradas" rows="5" required placeholder="Industrias Lerma 09:00&#10;Envases del Centro 10:15&#10;Base 12:00"></textarea>`,"El orden óptimo se calcula solo al guardar")}`,
+    d=>{
+      if(!libres.length){ toast("No hay unidades libres","⚠️"); return false; }
+      const paradas = d.paradas.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.match(/^(.*?)\s*(\d{1,2}:\d{2})?$/);return [m[1],m[2]||"—","",false];});
+      if(!paradas.length){ toast("Escribe al menos una parada","⚠️"); return false; }
+      S.rutas.unshift({id:"R-"+(S.seqRuta++),u:d.u,chofer:d.ch,nombre:d.nombre,estado:"en ruta",x:.85,y:.82,dx:-.004,dy:-.003,paradas});
+      toast("Ruta "+d.nombre+" asignada a "+d.u+" · el chofer la ve en su app","🚛"); refrescar();
+    },{enviar:"Asignar ruta"});
+}
+function nuevoChofer(refrescar){
+  drawer("Nuevo chofer",`${campo("Nombre",`<input name="n" required>`)}<div class="fc-row">${campo("Licencia",`<select name="lic">${opciones(["Federal B","Federal C","Federal E"])}</select>`)}${campo("Teléfono",`<input name="tel" placeholder="81 0000 0000">`)}</div>${campo("Unidad asignada",`<select name="u">${opciones(S.unidades.map(u=>u.u))}</select>`)}`,
+    d=>{ S.choferes.push({n:d.n,lic:d.lic+" · vence "+(new Date().getFullYear()+2),tel:d.tel||"—",unidad:d.u}); toast(d.n+" dado de alta · recibe la app por WhatsApp","📲"); refrescar(); });
+}
+function mapa(){
+  return `<div class="fmap" id="fmap">
+    <div class="road" style="left:6%;top:48%;width:88%;height:10px"></div>
+    <div class="road" style="left:46%;top:6%;width:10px;height:88%"></div>
+    <span class="lbl" style="left:8%;top:40%">Av. Industrial</span><span class="lbl" style="left:49%;top:8%">Carr. Nacional</span>
+    ${S.rutas.filter(r=>r.estado!=="terminada").map(r=>`<span class="pin ${r.estado==="retrasado"?"bad":r.estado==="entregando"?"ok":""}${S.sel===r.id?" sel":""}" data-pin="${r.id}" title="${esc(r.u)} · ${esc(r.chofer)}" style="left:${r.x*100}%;top:${r.y*100}%"><i>${r.u.replace("Unidad ","")}</i></span>`).join("")}
+    <span class="base">🏭 Base</span></div>`;
+}
+function animar(root){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    S.rutas.forEach(r=>{ if(r.estado==="terminada") return; r.x=Math.min(.95,Math.max(.05,r.x+r.dx)); r.y=Math.min(.93,Math.max(.07,r.y+r.dy)); if(r.x<=.05||r.x>=.95) r.dx*=-1; if(r.y<=.07||r.y>=.93) r.dy*=-1; });
+    root.querySelectorAll("[data-pin]").forEach(p=>{const r=S.rutas.find(x=>x.id===p.dataset.pin); if(r){p.style.left=(r.x*100)+"%";p.style.top=(r.y*100)+"%";}});
+  },1000);
+}
+
+/* ---------------- Demo ---------------- */
+const DEMO = {
+  negocio:"Transportes Río Bravo", rubro:"Logística y distribución", emoji:"🚛",
+  estado:{clave:"flotilla", get:()=>S, set:o=>{S=o;}},
+  secciones:[
+    {
+      id:"torre", nombre:"Torre de control", ic:"🗺️", titulo:"Torre de control", sub:"Dónde está cada unidad y cómo va su ruta · "+hoy(),
+      badge:()=>S.rutas.filter(r=>r.estado==="retrasado").length,
+      render(root, refrescar){
+        const ent=S.rutas.reduce((s,r)=>s+hechas(r),0), tot=S.rutas.reduce((s,r)=>s+total(r),0);
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Entregas de hoy</div><div class="val">${ent}/${tot}</div><div class="delta flat">${Math.round(ent/tot*100)}% del plan</div></div>
+            <div class="kpi"><div class="lbl">Unidades en ruta</div><div class="val">${activas().length}</div><div class="delta flat">de ${S.unidades.length}</div></div>
+            <div class="kpi"><div class="lbl">Retrasos</div><div class="val">${S.rutas.filter(r=>r.estado==="retrasado").length}</div><div class="delta ${S.rutas.some(r=>r.estado==="retrasado")?"down":"up"}">${S.rutas.some(r=>r.estado==="retrasado")?"clientes avisados automáticamente":"todo en ventana"}</div></div>
+            <div class="kpi"><div class="lbl">A tiempo</div><div class="val">${Math.round(S.rutas.reduce((s,r)=>s+r.paradas.filter(p=>p[2]&&p[2]<=p[1]).length,0)/Math.max(1,ent)*100)}%</div><div class="delta flat">entregas dentro de ventana</div></div>
+          </div>
+          <div class="cols">
+            <div class="panel"><div class="panel-h"><h2>Mapa en vivo</h2><span class="sub">Posición del celular del chofer cada 30 s</span></div><div class="panel-b">${mapa()}</div></div>
+            <div class="panel"><div class="panel-h"><h2>Unidades</h2></div><div class="panel-b flush"><table class="tbl"><tbody>
+              ${S.rutas.map(r=>`<tr><td><div class="cellmain"><div class="em">${r.estado==="terminada"?"🏁":"🚛"}</div><div><b>${esc(r.u)}</b><span>${esc(r.chofer)} · ${esc(r.nombre)}</span></div></div></td>
+                <td>${tagEstado(r)}<br><span style="font-size:.8rem;color:var(--ink-3)">${hechas(r)}/${total(r)} paradas</span></td>
+                <td><button class="btn sm" data-ruta="${r.id}">Ver ruta</button></td></tr>`).join("")}
+              ${S.unidades.filter(u=>!activas().some(r=>r.u===u.u)).map(u=>`<tr><td><div class="cellmain"><div class="em">🏭</div><div><b>${esc(u.u)}</b><span>${esc(u.tipo)}</span></div></div></td><td><span class="tag neutral">En base</span></td><td></td></tr>`).join("")}
+            </tbody></table></div></div>
+          </div>`;
+        root.querySelectorAll("[data-ruta]").forEach(b=>b.onclick=()=>{S.sel=b.dataset.ruta; DEMO.ir("rutas");});
+        root.querySelectorAll("[data-pin]").forEach(p=>p.onclick=()=>{S.sel=p.dataset.pin; DEMO.ir("rutas");});
+        animar(root);
+      }
+    },
+    {
+      id:"rutas", nombre:"Rutas de hoy", ic:"📍", titulo:"Rutas de hoy", sub:"Cada parada con su hora prevista, su hora real y su evidencia",
+      accion:{txt:"+ Nueva ruta", fn:nuevaRuta},
+      render(root, refrescar){
+        const r = S.rutas.find(x=>x.id===S.sel) || S.rutas[0];
+        root.innerHTML = `
+          <div class="panel"><div class="panel-h"><h2>${esc(r.u)} · ${esc(r.chofer)}</h2><span class="sub">${esc(r.nombre)} · ${hechas(r)}/${total(r)} paradas</span>
+            <div class="right"><select class="field" id="selRuta">${opciones(S.rutas.map(x=>[x.id,x.u+" · "+x.nombre]),r.id)}</select>${r.estado!=="terminada"?`<button class="btn primary" id="reg">Registrar siguiente entrega</button>`:""}</div></div>
+            <div class="panel-b">
+              <div style="margin-bottom:14px">${bar(hechas(r)/total(r))}</div>
+              <div class="tl">${r.paradas.map((p,i)=>`<div class="tl-i ${p[2]?"done":i===hechas(r)?"now":""}"><div class="tl-d"></div>
+                <div><b>${esc(p[0])}</b><span>Prevista ${p[1]}${p[2]?` · llegó ${p[2]} ${p[2]<=p[1]?'<span class="tag ok">a tiempo</span>':'<span class="tag warn">tarde</span>'}${p[0]!=="Base"?' <span class="evid">📷 foto · ✍️ firma · 📍 GPS</span>':""}${p[4]?' <span class="tag bad">incidencia</span>':""}`:i===hechas(r)?" · siguiente parada":""}</span></div></div>`).join("")}</div>
+            </div></div>
+          <div class="note info"><span class="ic">📲</span><div><b>El cliente recibe la evidencia en cuanto el chofer confirma</b><span>Foto, firma y hora por WhatsApp. Nadie vuelve a llamar a preguntar "¿ya pasaron?".</span></div></div>`;
+        root.querySelector("#selRuta").onchange=ev=>{S.sel=ev.target.value; refrescar();};
+        const b=root.querySelector("#reg"); if(b) b.onclick=()=>registrarEntrega(r, refrescar);
+      }
+    },
+    {
+      id:"entregas", nombre:"Entregas", ic:"📦", titulo:"Historial de entregas", sub:"Todas las entregas con su evidencia, para resolver cualquier reclamo en un minuto",
+      render(root){
+        const filas=[]; S.rutas.forEach(r=>r.paradas.forEach((p,i)=>{ if(p[2]&&p[0]!=="Base") filas.push({r,p,i}); }));
+        root.innerHTML = `
+          <div class="panel"><div class="panel-h"><h2>${filas.length} entregas de hoy</h2><div class="right"><input class="field search" id="f" placeholder="Buscar cliente…"></div></div>
+          <div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cliente</th><th>Unidad</th><th>Prevista</th><th>Real</th><th>Evidencia</th><th></th></tr></thead>
+            <tbody id="tb">${filas.map(({r,p})=>`<tr data-c="${esc(p[0].toLowerCase())}"><td><b>${esc(p[0])}</b></td><td>${esc(r.u)}<br><span style="font-size:.8rem;color:var(--ink-3)">${esc(r.chofer)}</span></td><td>${p[1]}</td><td>${p[2]} ${p[2]<=p[1]?'<span class="tag ok">a tiempo</span>':'<span class="tag warn">tarde</span>'}</td><td><span class="evid">📷 ✍️ 📍${p[4]?' <span class="tag bad">incidencia</span>':""}</span></td><td><button class="btn sm" data-env="${esc(p[0])}">Reenviar al cliente</button></td></tr>`).join("")}</tbody></table></div></div></div>`;
+        root.querySelector("#f").oninput=e=>{const q=e.target.value.toLowerCase(); root.querySelectorAll("#tb tr").forEach(tr=>tr.style.display=tr.dataset.c.includes(q)?"":"none");};
+        root.querySelectorAll("[data-env]").forEach(b=>b.onclick=()=>toast("Evidencia reenviada a "+b.dataset.env+" por WhatsApp","📲"));
+      }
+    },
+    {
+      id:"flota", nombre:"Choferes y unidades", ic:"🚚", titulo:"Choferes y unidades", sub:"Licencias, kilometraje y el próximo servicio de cada unidad",
+      badge:()=>S.unidades.filter(u=>u.servicio<=1000).length,
+      accion:{txt:"+ Chofer", fn:nuevoChofer},
+      render(root){
+        root.innerHTML = `
+          <div class="cols">
+            <div class="panel"><div class="panel-h"><h2>Choferes</h2></div><div class="panel-b flush"><table class="tbl"><thead><tr><th>Nombre</th><th>Licencia</th><th>Unidad</th></tr></thead>
+              <tbody>${S.choferes.map(c=>`<tr><td><b>${esc(c.n)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${esc(c.tel)}</span></td><td>${esc(c.lic)}</td><td>${esc(c.unidad)}</td></tr>`).join("")}</tbody></table></div></div>
+            <div class="panel"><div class="panel-h"><h2>Unidades</h2></div><div class="panel-b flush"><table class="tbl"><thead><tr><th>Unidad</th><th class="num">Km</th><th>Servicio</th></tr></thead>
+              <tbody>${S.unidades.map(u=>`<tr><td><b>${esc(u.u)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${esc(u.placas)} · ${esc(u.tipo)}</span></td><td class="num">${miles(u.km)}</td><td>${u.servicio<=0?'<span class="tag bad">Vencido '+miles(-u.servicio)+' km</span>':u.servicio<=1000?'<span class="tag warn">En '+miles(u.servicio)+' km</span>':'<span class="tag ok">En '+miles(u.servicio)+' km</span>'}</td></tr>`).join("")}</tbody></table></div></div>
+          </div>
+          <div class="note warn"><span class="ic">🔧</span><div><b>El servicio se programa solo</b><span>Al llegar al kilometraje, la unidad se bloquea para rutas largas y el taller recibe la cita.</span></div></div>`;
+      }
+    },
+  ],
+};
+startDemo(DEMO);
+</script>
+</body>
+</html>

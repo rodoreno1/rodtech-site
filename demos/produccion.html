@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Metalmecánica Delta — Demo RodTech</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/demo.css">
+</head>
+<body>
+
+<div class="demo-strip">
+  <b>Demostración</b>
+  <span class="sep">·</span>
+  <span class="hide-sm">Sistema de ejemplo para una planta metalmecánica. Los datos son ficticios.</span>
+  <a href="../index.html#ideas">← Volver a RodTech</a>
+</div>
+
+<div class="app" id="app"></div>
+<div id="toast"></div>
+
+<script src="assets/demo.js"></script>
+<script>
+/* ---------------- Estado ---------------- */
+const dias = n => { const d = new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("es-MX",{day:"numeric",month:"short"}).replace(".",""); };
+const EST = ["Corte","Soldadura","Pintura","Ensamble","Calidad"];
+let S = {
+  seq: 2044,
+  bom: {
+    "Bastidor soldado BS-400":[["Perfil PTR 2\" cal. 14",2.4,"m"],["Placa A-36 1/4\"",0.6,"kg"],["Soldadura ER70S-6",0.12,"kg"],["Pintura epóxica gris",0.08,"L"]],
+    "Tolva TV-120":[["Lámina galvanizada cal. 16",3.1,"m²"],["Ángulo 1 1/2\"",1.8,"m"],["Tornillería 3/8\" (juego)",1,"jgo"],["Pintura epóxica gris",0.15,"L"]],
+    "Base para motor BM-5":[["Placa A-36 1/2\"",4.2,"kg"],["Perfil PTR 2\" cal. 14",1.1,"m"],["Soldadura ER70S-6",0.2,"kg"]],
+  },
+  stock: {"Perfil PTR 2\" cal. 14":1480,"Placa A-36 1/4\"":820,"Placa A-36 1/2\"":610,"Soldadura ER70S-6":96,"Pintura epóxica gris":140,"Lámina galvanizada cal. 16":210,"Ángulo 1 1/2\"":300,"Tornillería 3/8\" (juego)":45},
+  minimos: {"Perfil PTR 2\" cal. 14":400,"Placa A-36 1/4\"":200,"Placa A-36 1/2\"":200,"Soldadura ER70S-6":40,"Pintura epóxica gris":40,"Lámina galvanizada cal. 16":80,"Ángulo 1 1/2\"":100,"Tornillería 3/8\" (juego)":20},
+  ops: [
+    {id:"OP-2041", prod:"Bastidor soldado BS-400", cant:400, buenas:248, rech:6, est:2, cliente:"Transformadores del Bajío", entrega:dias(4), reportes:[["Corte",400,2,dias(-3)],["Soldadura",398,4,dias(-1)],["Pintura",248,0,dias(0)]]},
+    {id:"OP-2043", prod:"Tolva TV-120", cant:60, buenas:12, rech:1, est:1, cliente:"Agroindustrias Río Verde", entrega:dias(9), reportes:[["Corte",60,1,dias(-1)],["Soldadura",12,0,dias(0)]]},
+    {id:"OP-2038", prod:"Base para motor BM-5", cant:120, buenas:120, rech:3, est:4, cliente:"Bombas del Centro", entrega:dias(-1), reportes:[["Corte",120,1,dias(-6)],["Soldadura",120,2,dias(-4)],["Pintura",120,0,dias(-3)],["Ensamble",120,0,dias(-2)],["Calidad",120,0,dias(-1)]]},
+  ],
+  requisiciones: [],
+};
+const abierta = o => !(o.buenas>=o.cant && o.est>=4);
+const avance = o => Math.round(((o.est/EST.length)*0.6 + (o.buenas/o.cant)*0.4)*100);
+const faltantes = (prod,cant) => S.bom[prod].filter(([m,c])=>S.stock[m]<c*cant).map(([m,c])=>({m,falta:Math.ceil(c*cant-S.stock[m])}));
+const bajos = () => Object.keys(S.stock).filter(m=>S.stock[m]<S.minimos[m]);
+const merma = () => { const b=S.ops.reduce((s,o)=>s+o.buenas,0), r=S.ops.reduce((s,o)=>s+o.rech,0); return (r/Math.max(1,b+r)*100).toFixed(1); };
+const tagOP = o => !abierta(o)?'<span class="tag ok">Terminada</span>':o.est===4?'<span class="tag info">En calidad</span>':`<span class="tag neutral">${EST[o.est]}</span>`;
+
+/* ---------------- Flujos ---------------- */
+function reportar(o, refrescar){
+  drawer("Reportar avance · "+o.id, `
+    <div class="note info"><span class="ic">⚙️</span><div><b>${esc(o.prod)}</b><span>${o.buenas}/${o.cant} buenas · estación actual ${EST[o.est]}</span></div></div>
+    <div class="fc-row">${campo("Estación",`<select name="est">${opciones(EST.map((e,i)=>[String(i),e]).filter(([i])=>+i<=o.est),String(o.est))}</select>`)}${campo("Turno",`<select name="turno">${opciones(["Matutino","Vespertino","Nocturno"])}</select>`)}</div>
+    <div class="fc-row">${campo("Piezas buenas",`<input name="b" type="number" value="${Math.min(40,o.cant-o.buenas)}" min="0" max="${o.cant-o.buenas}">`)}${campo("Rechazadas",`<input name="r" type="number" value="0" min="0">`)}</div>
+    ${campo("Motivo de rechazo",`<select name="mot">${opciones(["—","Poro en soldadura","Dimensión fuera de tolerancia","Daño en pintura","Material defectuoso"])}</select>`)}
+    ${campo("Consumo que se descuenta del almacén",`<div class="ticket">${S.bom[o.prod].map(([m,c,u])=>`<div class="r"><span>${esc(m)}</span><span>${c} ${u}/pz</span></div>`).join("")}</div>`,"Se calcula con la lista de materiales × piezas reportadas")}`,
+    d=>{ const b=Math.max(0,parseInt(d.b||"0",10)), r=Math.max(0,parseInt(d.r||"0",10)); if(!b&&!r){ toast("Captura piezas buenas o rechazadas","⚠️"); return false; }
+      S.bom[o.prod].forEach(([m,c])=>{ S.stock[m]=Math.max(0,Math.round((S.stock[m]-c*(b+r))*100)/100); });
+      o.buenas=Math.min(o.cant,o.buenas+b); o.rech+=r; o.reportes.push([EST[+d.est],b,r,dias(0)]);
+      if(o.buenas>=o.cant && +d.est<EST.length-1){ o.est=Math.min(EST.length-1,+d.est+1); o.buenas=0; toast(o.id+" pasa a "+EST[o.est]+" · inventario descontado","➡️"); }
+      else toast("Avance guardado · inventario descontado"+(r?" · "+r+" rechazadas ("+d.mot+")":""),"✅");
+      const faltan=bajos(); if(faltan.length && !S.requisiciones.some(q=>q.abierta)){ S.requisiciones.unshift({folio:"REQ-"+(118+S.requisiciones.length),mats:faltan,fecha:dias(0),abierta:true}); toast("Requisición a compras por "+faltan.length+" material(es) bajo mínimo","🛒"); }
+      refrescar(); },{enviar:"Guardar reporte"});
+}
+function nuevaOP(refrescar){
+  drawer("Nueva orden de producción", `
+    ${campo("Producto",`<select name="prod">${opciones(Object.keys(S.bom))}</select>`)}
+    <div class="fc-row">${campo("Cantidad",`<input name="cant" type="number" value="50" min="1">`)}${campo("Cliente",`<input name="cli" placeholder="Stock o nombre del cliente">`)}</div>
+    ${campo("Fecha compromiso",`<input name="fecha" placeholder="${dias(7)}">`,"A 40 pz por turno")}
+    <div class="note info"><span class="ic">🧮</span><div><b>Explosión de materiales al liberar</b><span>Si falta material, la requisición a compras sale sola y la orden queda en espera.</span></div></div>`,
+    d=>{ const cant=Math.max(1,parseInt(d.cant||"1",10)); const f=faltantes(d.prod,cant);
+      const o={id:"OP-"+(S.seq++),prod:d.prod,cant,buenas:0,rech:0,est:0,cliente:d.cli||"Stock",entrega:d.fecha||dias(Math.ceil(cant/40)+2),reportes:[],espera:f.length>0};
+      S.ops.unshift(o);
+      if(f.length){ S.requisiciones.unshift({folio:"REQ-"+(118+S.requisiciones.length),mats:f.map(x=>x.m),fecha:dias(0),abierta:true,op:o.id}); toast(o.id+" en espera de material · requisición enviada a compras","🛒"); }
+      else toast(o.id+" liberada al piso","⚙️");
+      refrescar(); },{enviar:"Liberar orden"});
+}
+function recibirReq(q, refrescar){
+  q.abierta=false; q.mats.forEach(m=>{ S.stock[m]=S.minimos[m]*3; }); const op=S.ops.find(o=>o.id===q.op); if(op) op.espera=false;
+  toast(q.folio+" recibida · material en almacén"+(op?" · "+op.id+" liberada":""),"📦"); refrescar();
+}
+
+/* ---------------- Demo ---------------- */
+const DEMO = {
+  negocio:"Metalmecánica Delta", rubro:"Planta de ensamble", emoji:"⚙️",
+  estado:{clave:"produccion", get:()=>S, set:o=>{S=o;}},
+  secciones:[
+    {
+      id:"ops", nombre:"Órdenes de producción", ic:"⚙️", titulo:"Órdenes de producción", sub:"Avance por estación, reportado desde piso",
+      badge:()=>S.ops.filter(abierta).length,
+      accion:{txt:"+ Nueva orden", fn:nuevaOP},
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Piezas buenas hoy</div><div class="val">${S.ops.reduce((s,o)=>s+o.reportes.filter(r=>r[3]===dias(0)).reduce((a,r)=>a+r[1],0),0)}</div><div class="delta flat">turno matutino</div></div>
+            <div class="kpi"><div class="lbl">Merma</div><div class="val">${merma()}%</div><div class="delta ${+merma()>2?"down":"up"}">meta 2%</div></div>
+            <div class="kpi"><div class="lbl">Órdenes abiertas</div><div class="val">${S.ops.filter(abierta).length}</div><div class="delta flat">${S.ops.filter(o=>o.espera).length?S.ops.filter(o=>o.espera).length+" en espera de material":"ninguna detenida"}</div></div>
+            <div class="kpi"><div class="lbl">Material bajo mínimo</div><div class="val">${bajos().length}</div><div class="delta ${bajos().length?"down":"up"}">${bajos().length?"requisición en compras":"almacén cubierto"}</div></div>
+          </div>
+          <div class="panel"><div class="panel-b flush"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Orden</th><th>Producto</th><th>Avance</th><th>Estación</th><th>Entrega</th><th></th></tr></thead>
+            <tbody>${S.ops.map(o=>`<tr><td><b>${esc(o.id)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${esc(o.cliente)}</span></td><td>${esc(o.prod)}<br><span style="font-size:.8rem;color:var(--ink-3)">${o.buenas}/${o.cant} pz · ${o.rech} rech.</span></td>
+              <td style="min-width:150px">${bar(avance(o)/100)}<span style="font-size:.8rem;color:var(--ink-3)">${avance(o)}%</span></td><td>${o.espera?'<span class="tag warn">Espera material</span>':tagOP(o)}</td><td>${o.entrega}</td>
+              <td><div class="actions"><button class="btn sm" data-ver="${esc(o.id)}">Detalle</button>${abierta(o)&&!o.espera?`<button class="btn sm primary" data-rep="${esc(o.id)}">Reportar</button>`:""}</div></td></tr>`).join("")}</tbody></table></div></div></div>`;
+        root.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>reportar(S.ops.find(o=>o.id===b.dataset.rep),refrescar));
+        root.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>{S.sel=b.dataset.ver; DEMO.ir("detalle");});
+      }
+    },
+    {
+      id:"detalle", nombre:"Detalle de orden", ic:"📋", titulo:"Detalle de orden", sub:"Lista de materiales, consumo real y bitácora de reportes",
+      render(root, refrescar){
+        const o=S.ops.find(x=>x.id===S.sel)||S.ops[0];
+        root.innerHTML = `
+          <div class="panel"><div class="panel-h"><h2>${esc(o.id)} · ${esc(o.prod)}</h2><span class="sub">${o.cant} pz · ${esc(o.cliente)} · entrega ${o.entrega}</span><div class="right"><select class="field" id="selOP">${opciones(S.ops.map(x=>[x.id,x.id+" · "+x.prod]),o.id)}</select>${abierta(o)&&!o.espera?`<button class="btn primary" id="rep">Reportar avance</button>`:""}</div></div>
+            <div class="panel-b"><div class="tl" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0">${EST.map((e,i)=>`<div class="tl-i ${i<o.est?"done":i===o.est?"now":""}" style="padding:0;flex-direction:column;gap:6px"><div class="tl-d"></div><div><b>${e}</b><span>${i<o.est?"completa":i===o.est?"en proceso":"—"}</span></div></div>`).join("")}</div></div></div>
+          <div class="cols">
+            <div class="panel"><div class="panel-h"><h2>Lista de materiales</h2><span class="sub">requerido · consumido · en almacén</span></div><div class="panel-b flush"><table class="tbl"><thead><tr><th>Material</th><th class="num">Por pieza</th><th class="num">Requerido</th><th class="num">Consumido</th><th class="num">Almacén</th></tr></thead><tbody>
+              ${S.bom[o.prod].map(([m,c,u])=>{const req=c*o.cant, con=Math.round(c*(o.buenas+o.rech)*100)/100, falta=S.stock[m]<c*(o.cant-o.buenas);return `<tr><td><b>${esc(m)}</b></td><td class="num">${c} ${u}</td><td class="num">${req.toFixed(1)} ${u}</td><td class="num">${con} ${u}</td><td class="num" style="color:${falta?"var(--bad)":"var(--ok)"}">${S.stock[m]} ${u}${falta?" ⚠️":""}</td></tr>`;}).join("")}</tbody></table></div></div>
+            <div class="panel"><div class="panel-h"><h2>Bitácora</h2></div><div class="panel-b flush"><table class="tbl"><thead><tr><th>Fecha</th><th>Estación</th><th class="num">Buenas</th><th class="num">Rech.</th></tr></thead><tbody>
+              ${o.reportes.length?o.reportes.slice().reverse().map(r=>`<tr><td>${r[3]}</td><td>${esc(r[0])}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td></tr>`).join(""):`<tr><td colspan="4"><div class="empty"><div class="big">📋</div><b>Sin reportes todavía</b><p>${o.espera?"La orden espera material.":"El piso reporta desde su tablet al cerrar cada lote."}</p></div></td></tr>`}</tbody></table></div></div>
+          </div>`;
+        root.querySelector("#selOP").onchange=ev=>{S.sel=ev.target.value; refrescar();};
+        const b=root.querySelector("#rep"); if(b) b.onclick=()=>reportar(o,refrescar);
+      }
+    },
+    {
+      id:"materiales", nombre:"Materiales", ic:"🧱", titulo:"Materiales", sub:"Existencia contra mínimos y requisiciones a compras",
+      badge:()=>bajos().length,
+      render(root, refrescar){
+        root.innerHTML = `
+          <div class="cols">
+            <div class="panel"><div class="panel-h"><h2>Almacén de materia prima</h2></div><div class="panel-b flush"><table class="tbl"><thead><tr><th>Material</th><th class="num">Existencia</th><th class="num">Mínimo</th><th>Nivel</th></tr></thead><tbody>
+              ${Object.keys(S.stock).map(m=>`<tr><td><b>${esc(m)}</b></td><td class="num">${S.stock[m]}</td><td class="num">${S.minimos[m]}</td><td>${S.stock[m]<S.minimos[m]?'<span class="tag bad">Bajo mínimo</span>':S.stock[m]<S.minimos[m]*1.5?'<span class="tag warn">Cerca del mínimo</span>':'<span class="tag ok">OK</span>'}</td></tr>`).join("")}</tbody></table></div></div>
+            <div class="panel"><div class="panel-h"><h2>Requisiciones a compras</h2></div><div class="panel-b flush"><table class="tbl"><tbody>
+              ${S.requisiciones.length?S.requisiciones.map(q=>`<tr><td><b>${esc(q.folio)}</b><br><span style="font-size:.8rem;color:var(--ink-3)">${q.fecha} · ${q.mats.map(esc).join(", ")}${q.op?" · para "+q.op:""}</span></td><td>${q.abierta?`<button class="btn sm primary" data-rec="${esc(q.folio)}">Material recibido</button>`:'<span class="tag ok">Surtida</span>'}</td></tr>`).join(""):`<tr><td><div class="empty"><div class="big">🛒</div><b>Sin requisiciones abiertas</b><p>Se generan solas cuando un reporte deja un material bajo mínimo.</p></div></td></tr>`}</tbody></table></div></div>
+          </div>`;
+        root.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>recibirReq(S.requisiciones.find(q=>q.folio===b.dataset.rec),refrescar));
+      }
+    },
+  ],
+};
+startDemo(DEMO);
+</script>
+</body>
+</html>
