@@ -116,6 +116,13 @@ serverless con Resend…) y pon su URL en el atributo `data-endpoint` del `<form
 Con eso el formulario hace `POST` ahí y lleva a `gracias.html`; si ese servicio
 falla, el mensaje se va por WhatsApp de todos modos. Nunca se pierde un contacto.
 
+### El botón "Agenda 30 min"
+
+En la sección de contacto hay un botón de agenda que hoy abre un correo con el
+asunto y el cuerpo ya escritos. Cuando tengas una liga de calendario (Calendly,
+Google Calendar citas, Cal.com), cámbiala en el `href` de ese botón en
+`index.html` y listo; el texto del botón puede quedarse igual.
+
 ## Despliegue en Vercel
 
 Sitio 100% estático: **no hay comando de build ni dependencias que instalar**.

@@ -135,7 +135,7 @@ function heroIntro(){
 /* Todas caben en un renglón desde 360 px hasta 1920 px. "atienda mejor a
    sus clientes" se partía en dos y el hero completo saltaba ~100 px en cada
    rotación (botones y párrafo bajaban y subían cada 3 s). */
-const words = ["automatice procesos","venda en línea","conecte sus sistemas","atienda mejor","crezca sin límites"];
+const words = ["importe sin sorpresas","entregue a tiempo","cotice en segundos","controle su almacén","produzca sin paros"];
 let wi = 0;
 const rot = document.getElementById("rotator");
 /* replaceChildren en vez de innerHTML: sustituye todos los nodos en una
@@ -667,11 +667,13 @@ document.querySelectorAll(".biz").forEach(card=>{
       "Hola RodTech, les escribo desde su sitio.",
       "",
       "Nombre: " + d.nombre,
-      "Negocio: " + d.negocio,
-      "WhatsApp: " + d.whatsapp
+      "Empresa y puesto: " + d.negocio
     ];
+    if(d.tamano) lineas.push("Tamaño: " + d.tamano);
+    if(d.sistemas) lineas.push("Sistemas actuales: " + d.sistemas);
+    lineas.push("WhatsApp: " + d.whatsapp);
     if(d.correo) lineas.push("Correo: " + d.correo);
-    lineas.push("", "Lo que necesito:", d.mensaje);
+    lineas.push("", "Proceso que queremos resolver:", d.mensaje);
     return lineas.join("\n");
   }
 
@@ -694,6 +696,8 @@ document.querySelectorAll(".biz").forEach(card=>{
     const datos = {
       nombre:   (fd.get("nombre")||"").toString().trim(),
       negocio:  (fd.get("negocio")||"").toString().trim(),
+      tamano:   (fd.get("tamano")||"").toString().trim(),
+      sistemas: (fd.get("sistemas")||"").toString().trim(),
       whatsapp: (fd.get("whatsapp")||"").toString().trim(),
       correo:   (fd.get("correo")||"").toString().trim(),
       mensaje:  (fd.get("mensaje")||"").toString().trim()
