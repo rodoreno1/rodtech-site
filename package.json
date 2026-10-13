@@ -1,0 +1,14 @@
+{
+  "name": "rodtech-site",
+  "private": true,
+  "description": "Sitio de RodTech: página estática más funciones en /api para el panel de clientes",
+  "scripts": {
+    "dev": "node scripts/dev.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.11"
+  }
+}

@@ -704,6 +704,12 @@ document.querySelectorAll(".biz").forEach(card=>{
     };
     const waUrl = "https://wa.me/" + WA_NUM + "?text=" + encodeURIComponent(mensaje(datos));
 
+    /* Copia para el panel de clientes (/admin). Si la función no existe o
+       falla, el envío por WhatsApp sigue exactamente igual. */
+    try{
+      fetch("/api/lead",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(datos),keepalive:true}).catch(()=>{});
+    }catch(_){}
+
     const endpoint = form.dataset.endpoint;
     if(endpoint){
       btn.disabled = true;

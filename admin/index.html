@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clientes — RodTech</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+
+<!-- Entrada -->
+<div class="login" id="vistaLogin" hidden>
+  <form class="login-card" id="formLogin" novalidate>
+    <div class="brand">RODTECH <span>· clientes</span></div>
+    <h1>Panel de clientes</h1>
+    <p class="login-sub">Aquí aparecen los contactos que llegan por el formulario del sitio y los clientes que agregues a mano.</p>
+    <label for="pass">Contraseña</label>
+    <input id="pass" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit" class="btn btn-primary" id="btnEntrar">Entrar</button>
+    <p class="login-msg" id="loginMsg" role="alert"></p>
+    <a class="login-back" href="/">← Volver al sitio</a>
+  </form>
+</div>
+
+<!-- Panel -->
+<div class="panel" id="vistaPanel" hidden>
+  <header class="top">
+    <div class="brand">RODTECH <span>· clientes</span></div>
+    <div class="top-actions">
+      <button type="button" class="btn btn-primary" id="btnNuevo">+ Nuevo</button>
+      <button type="button" class="btn btn-ghost" id="btnCsv"><span class="solo-ancho">Exportar&nbsp;</span>CSV</button>
+      <button type="button" class="btn btn-ghost" id="btnSalir">Salir</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="stats" id="stats" aria-label="Resumen por estado"></section>
+
+    <section class="toolbar">
+      <input type="search" id="buscar" placeholder="Buscar por nombre, empresa, correo, WhatsApp…" aria-label="Buscar">
+      <select id="filtroEstado" aria-label="Filtrar por estado">
+        <option value="">Todos los estados</option>
+      </select>
+      <button type="button" class="btn btn-ghost btn-icon" id="btnRecargar" title="Actualizar" aria-label="Actualizar">↻</button>
+    </section>
+
+    <section class="lista" id="lista" aria-live="polite"></section>
+  </main>
+</div>
+
+<!-- Ficha -->
+<div class="drawer-bg" id="drawerBg" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Ficha del cliente">
+  <form id="formCliente" novalidate>
+    <input type="hidden" name="id" id="c-id">
+    <header class="drawer-head">
+      <div>
+        <p class="mono" id="c-titulo">Nuevo cliente</p>
+        <p class="drawer-meta" id="c-meta"></p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-icon" id="btnCerrar" aria-label="Cerrar">✕</button>
+    </header>
+
+    <div class="drawer-body">
+      <div class="f">
+        <label for="c-estado">Estado</label>
+        <select id="c-estado" name="estado"></select>
+      </div>
+      <div class="f">
+        <label for="c-nombre">Nombre *</label>
+        <input id="c-nombre" name="nombre" type="text" required maxlength="120">
+      </div>
+      <div class="f">
+        <label for="c-empresa">Empresa y puesto</label>
+        <input id="c-empresa" name="empresa" type="text" maxlength="160">
+      </div>
+      <div class="f2">
+        <div class="f">
+          <label for="c-whatsapp">WhatsApp</label>
+          <input id="c-whatsapp" name="whatsapp" type="tel" maxlength="40" inputmode="tel">
+        </div>
+        <div class="f">
+          <label for="c-correo">Correo</label>
+          <input id="c-correo" name="correo" type="email" maxlength="120" inputmode="email">
+        </div>
+      </div>
+      <div class="f2">
+        <div class="f">
+          <label for="c-tamano">Tamaño</label>
+          <select id="c-tamano" name="tamano">
+            <option value="">Sin dato</option>
+            <option>10 a 50 personas</option>
+            <option>50 a 250 personas</option>
+            <option>250 a 1,000 personas</option>
+            <option>Más de 1,000 personas</option>
+          </select>
+        </div>
+        <div class="f">
+          <label for="c-sistemas">Sistemas que usan</label>
+          <input id="c-sistemas" name="sistemas" type="text" maxlength="240">
+        </div>
+      </div>
+      <div class="f">
+        <label for="c-mensaje">Proceso que quieren resolver</label>
+        <textarea id="c-mensaje" name="mensaje" rows="4" maxlength="3000"></textarea>
+      </div>
+      <div class="f">
+        <label for="c-notas">Notas de seguimiento</label>
+        <textarea id="c-notas" name="notas" rows="5" maxlength="5000" placeholder="Llamada del lunes, acordamos visita el jueves…"></textarea>
+      </div>
+      <p class="form-msg" id="c-msg" role="alert"></p>
+    </div>
+
+    <footer class="drawer-foot">
+      <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
+      <a class="btn btn-ghost" id="btnWa" href="#" target="_blank" rel="noopener" hidden>💬 WhatsApp</a>
+      <button type="button" class="btn btn-danger" id="btnBorrar" hidden>Eliminar</button>
+    </footer>
+  </form>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>

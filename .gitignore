@@ -24,3 +24,6 @@ desktop.ini
 
 # Maquetas de exploracion de diseno (no publicar)
 _mockups/
+
+# Base de datos local del panel (npm run dev)
+.data/

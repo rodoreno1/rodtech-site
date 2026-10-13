@@ -123,6 +123,44 @@ asunto y el cuerpo ya escritos. Cuando tengas una liga de calendario (Calendly,
 Google Calendar citas, Cal.com), cámbiala en el `href` de ese botón en
 `index.html` y listo; el texto del botón puede quedarse igual.
 
+## Panel de clientes (`/admin`)
+
+En `https://tu-sitio/admin` hay un panel privado con los contactos que llegan por
+el formulario y los clientes que agregues a mano: estado de cada uno (nuevo,
+contactado, en diagnóstico, propuesta, cliente, no avanzó), notas de
+seguimiento, búsqueda, filtros, botón directo a WhatsApp y exportación a CSV.
+
+Cómo funciona por dentro: cada envío del formulario hace una copia a `/api/lead`
+(además de abrir WhatsApp), y las funciones de la carpeta `api/` la guardan en
+una base de datos Postgres. Vercel ejecuta esas funciones solo; no hay build.
+
+### Ponerlo a funcionar en Vercel (una sola vez)
+
+1. **Base de datos.** En el proyecto de Vercel: *Storage → Create Database →
+   Neon* (plan gratuito). Al conectarla al proyecto, Vercel crea sola la
+   variable `DATABASE_URL`. Elige la región más cercana que ofrezca.
+2. **Contraseña.** *Settings → Environment Variables*: agrega `ADMIN_PASSWORD`
+   con una contraseña larga (es la única llave del panel). Opcional:
+   `ADMIN_SECRET` con un texto aleatorio para firmar las sesiones.
+3. **Vuelve a desplegar** (*Deployments → Redeploy*) para que las funciones
+   tomen las variables. La tabla se crea sola en la primera visita.
+4. Abre `/admin`, entra con la contraseña y manda un mensaje de prueba desde el
+   formulario del sitio: debe aparecer como «Nuevo».
+
+Los datos viven en Neon; desde su consola puedes verlos, respaldarlos o
+borrarlos. El panel no se indexa en buscadores (`robots.txt` y cabeceras).
+
+### Probar en tu computadora
+
+```bash
+npm install
+npm run dev        # http://localhost:3000  ·  panel en /admin
+```
+
+Sin `DATABASE_URL` el servidor local usa un Postgres embebido (PGlite) que
+guarda los datos en `.data/`; la contraseña del panel en local es `admin` salvo
+que definas otra en un archivo `.env` (mira `.env.example`).
+
 ## Despliegue en Vercel
 
 Sitio 100% estático: **no hay comando de build ni dependencias que instalar**.
