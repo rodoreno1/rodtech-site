@@ -105,9 +105,9 @@ function blurTextIn(el, delay){
   if(!words.length) return;
   gsap.set(words,{filter:"blur(10px)",opacity:0,y:50});
   gsap.timeline({delay:delay||0})
-    .to(words,{filter:"blur(5px)",opacity:0.5,y:-5,duration:0.35,ease:"power2.out",stagger:0.06})
-    .to(words,{filter:"blur(0px)",opacity:1,y:0,duration:0.35,ease:"power2.out",stagger:0.06,
-      clearProps:"filter,transform"}, 0.35);
+    .to(words,{filter:"blur(5px)",opacity:0.5,y:-5,duration:0.22,ease:"power2.out",stagger:0.03})
+    .to(words,{filter:"blur(0px)",opacity:1,y:0,duration:0.22,ease:"power2.out",stagger:0.03,
+      clearProps:"filter,transform"}, 0.2);
 }
 
 /* El hero arranca de inmediato. Antes habia un preloader de 1.4 s, pero el
@@ -128,7 +128,6 @@ function heroIntro(){
   gsap.from(".hero h1 .line:not([data-blur]) > span",
     {yPercent:110,duration:0.95,delay:0.35,ease:"power3.out",clearProps:"transform"});
   gsap.from(".hero .reveal",{opacity:0,y:30,duration:0.8,stagger:0.06,delay:0.5,ease:"power2.out"});
-  gsap.from(".smarquee",{opacity:0,duration:1,delay:0.7,ease:"power2.out"});
   gsap.to(".scroll-hint",{y:10,repeat:-1,yoyo:true,duration:0.8,ease:"sine.inOut"});
 }
 
@@ -336,54 +335,6 @@ const TILES = [
   {id:"taller",       em:"🔧", n:"Taller Rodríguez",        rows:[["Orden A-1042","70%"],["Balatas delanteras","$1,250"],["Chat con el mecánico","💬"]], foot:"Estatus en vivo"}
 ];
 
-function buildTile(t){
-  const b = document.createElement("button");
-  b.className = "stile liquid-glass";
-  b.type = "button";
-  b.setAttribute("aria-label","Abrir demo de "+t.n);
-  b.dataset.demo = t.id;
-  b.innerHTML =
-    `<div class="stile-top"><span class="em">${t.em}</span><b>${t.n}</b></div>
-     <div class="stile-body">
-       ${t.rows.map(([a,c])=>`<div class="stile-line">${a}<i>${c}</i></div>`).join("")}
-     </div>
-     <div class="stile-foot">${t.foot}</div>`;
-  b.addEventListener("click",()=>openDemo(t.id, b));
-  return b;
-}
-
-(function initMarquee(){
-  const wrap = document.getElementById("smarquee");
-  const row1 = document.getElementById("smRow1");
-  const row2 = document.getElementById("smRow2");
-  if(!wrap || !row1 || !row2) return;
-
-  /* Se triplica cada fila para que nunca se vea el final del carrete */
-  const setA = [TILES[0],TILES[1],TILES[2]];
-  const setB = [TILES[3],TILES[4],TILES[5]];
-  for(let i=0;i<3;i++){
-    setA.forEach(t=>row1.appendChild(buildTile(t)));
-    setB.forEach(t=>row2.appendChild(buildTile(t)));
-  }
-
-  if(reduced) return;   /* sin movimiento: las fichas se quedan quietas */
-
-  function place(){
-    const rect = wrap.getBoundingClientRect();
-    /* Solo trabaja mientras la sección está cerca del viewport */
-    if(rect.bottom < -200 || rect.top > innerHeight + 200) return;
-    const offset = (innerHeight - rect.top) * 0.3;
-    row1.style.transform = `translateX(${offset - 400}px)`;
-    row2.style.transform = `translateX(${-(offset - 400)}px)`;
-  }
-  /* Directo en el evento, sin pasar por requestAnimationFrame: si un rAF se
-     perdia (pestana en segundo plano, panel sin componer) la bandera
-     "ticking" se quedaba en true y el marquee se congelaba para siempre.
-     Son dos escrituras de transform; no hace falta coalescer. */
-  addEventListener("scroll",place,{passive:true});
-  addEventListener("resize",place);
-  place();
-})();
 
 /* ==================== TARJETAS QUE SE APILAN ====================
    Cada tarjeta se queda pegada arriba y se encoge conforme la siguiente
@@ -435,6 +386,20 @@ function buildTile(t){
   });
 })();
 
+/* ==================== BOTÓN FLOTANTE DE WHATSAPP ====================
+   Aparece después de la primera pantalla y se esconde mientras la sección
+   de contacto está a la vista (ahí ya está el botón grande). */
+(function initWaFab(){
+  const fab = document.getElementById("waFab");
+  if(!fab) return;
+  let enContacto = false;
+  const contacto = document.getElementById("contacto");
+  function pinta(){ fab.classList.toggle("is-on", scrollY > 400 && !enContacto); }
+  if(contacto) new IntersectionObserver(es=>{ enContacto = es[0].isIntersecting; pinta(); },{threshold:0.15}).observe(contacto);
+  addEventListener("scroll", pinta, {passive:true});
+  pinta();
+})();
+
 /* ==================== BARRA QUE SE ESCONDE AL BAJAR ====================
    Baja la página → la barra se va; sube aunque sea un poco → vuelve. Se
    acumula el desplazamiento en una dirección para que un tirón de 24 px
@@ -464,7 +429,7 @@ function buildTile(t){
 
 /* ==================== SCROLLSPY: resalta la sección activa en el nav ==================== */
 const spyLinks = [...document.querySelectorAll('#navLinks a[href^="#"]:not(.nav-cta)')];
-const spySections = ["servicios","ideas","proceso","problemas","nosotros","faq","contacto"]
+const spySections = ["ideas","servicios","proceso","problemas","nosotros","faq","contacto"]
   .map(id=>({id, el:document.getElementById(id)}))
   .filter(s=>s.el);
 function updateSpy(){
@@ -503,16 +468,16 @@ if(!reduced){
   gsap.utils.toArray(".section-head, .cta").forEach(el=>{
     const h2 = el.querySelector("h2");
     if(h2){
-      ScrollTrigger.create({trigger:el,start:"top 86%",once:true,
+      ScrollTrigger.create({trigger:el,start:"top 92%",once:true,
         onEnter:()=>blurTextIn(h2)});
       gsap.from([...el.children].filter(c=>c!==h2).concat(
         [...(h2.parentElement===el?[]:[h2.parentElement])].filter(Boolean)
           .flatMap(p=>[...p.children].filter(c=>c!==h2))),
         {opacity:0,y:40,duration:0.8,ease:"power3.out",
-         scrollTrigger:{trigger:el,start:"top 86%",once:true}});
+         scrollTrigger:{trigger:el,start:"top 92%",once:true}});
     } else {
       gsap.from(el,{opacity:0,y:40,duration:0.8,ease:"power3.out",
-        scrollTrigger:{trigger:el,start:"top 86%",once:true}});
+        scrollTrigger:{trigger:el,start:"top 92%",once:true}});
     }
   });
   /* Tarjetas y filas, en lotes con stagger */

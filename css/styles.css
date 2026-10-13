@@ -147,7 +147,10 @@ body.has-hero-video .hero::before{opacity:.35}
 .stat{
   padding:18px;width:224px;border-radius:1.25rem;
   display:flex;flex-direction:column;
+  color:inherit;text-decoration:none;transition:transform .3s ease;
 }
+.stat .lbl::after{content:" →";color:var(--neon)}
+@media(hover:hover) and (pointer:fine){.stat:hover{transform:translateY(-4px)}}
 .stat .ico{width:26px;height:26px;color:var(--neon);margin-bottom:auto}
 .stat .num{
   font-family:'Anton',sans-serif;font-size:1.95rem;line-height:1;
@@ -331,46 +334,6 @@ nav.is-hidden:focus-within{transform:none}
 }
 .logo .ll{display:inline-block}
 
-/* ---------- MARQUEE REACTIVO AL SCROLL ----------
-   Dos filas que se cruzan: la de arriba avanza y la de abajo retrocede,
-   ambas en función de cuánto has bajado en la página. */
-.smarquee{
-  padding:44px 0 44px;position:relative;z-index:2;overflow:hidden;
-  display:flex;flex-direction:column;gap:12px;
-}
-.smarquee-row{display:flex;gap:12px;width:max-content;will-change:transform}
-.stile{
-  width:346px;height:236px;border-radius:1.25rem;flex-shrink:0;
-  padding:0;overflow:hidden;cursor:pointer;
-  display:flex;flex-direction:column;text-align:left;
-  font-family:inherit;color:inherit;
-  transition:transform .3s ease;
-}
-@media(hover:hover) and (pointer:fine){
-  .stile:hover{transform:translateY(-6px)}
-}
-.stile-top{
-  background:linear-gradient(120deg,#1C1C21,#2A2A31);
-  padding:12px 14px;display:flex;align-items:center;gap:9px;flex-shrink:0;
-}
-.stile-top .em{font-size:1.3rem;line-height:1}
-.stile-top b{color:#fff;font-size:0.95rem;font-weight:700}
-.stile-body{padding:12px 13px;display:flex;flex-direction:column;gap:7px;flex:1}
-.stile-line{
-  height:32px;border-radius:8px;background:rgba(255,255,255,0.07);
-  display:flex;align-items:center;padding:0 12px;
-  font-size:0.9rem;color:rgba(244,241,255,0.82);
-}
-.stile-line i{
-  font-style:normal;margin-left:auto;color:var(--neon);font-weight:700;font-size:0.88rem;
-}
-.stile-foot{
-  padding:10px 13px;font-family:'Space Mono',monospace;font-size:0.88rem;
-  letter-spacing:0.1em;text-transform:uppercase;color:var(--neon);
-  border-top:1px solid rgba(255,255,255,0.07);
-}
-@media(max-width:640px){.stile{width:290px;height:225px}}
-
 /* ---------- SECTIONS ---------- */
 section{padding:110px 0;position:relative;z-index:2;scroll-margin-top:70px}
 .section-head{
@@ -411,12 +374,33 @@ section{padding:110px 0;position:relative;z-index:2;scroll-margin-top:70px}
 }
 .service h3{font-size:1.4rem;margin-bottom:12px;font-weight:600;line-height:1.25}
 .service p{font-size:1.02rem;color:var(--muted);line-height:1.6}
+/* En teléfono el icono va en la misma fila que el título: son seis tarjetas
+   seguidas y cada renglón que se ahorra se nota (la sección bajó de cuatro
+   pantallas a menos de tres). */
+@media(max-width:640px){
+  .service{padding:22px 20px;display:grid;grid-template-columns:42px 1fr;column-gap:12px}
+  .service .tag{grid-column:1/-1;margin-bottom:14px}
+  .service .icon{width:42px;height:42px;font-size:1.15rem;margin:0;grid-row:2}
+  .service h3{font-size:1.2rem;margin:0;grid-row:2;align-self:center}
+  .service p{font-size:0.98rem;grid-column:1/-1;margin-top:12px}
+  .service .example{grid-column:1/-1}
+}
+/* El ejemplo se pliega: seis ejemplos abiertos hacían que "Servicios"
+   midiera cuatro pantallas en un teléfono antes de llegar a los demos. */
 .service .example{
-  margin-top:18px;padding:15px 17px;border-radius:12px;
+  margin-top:16px;border-radius:12px;
   background:rgba(43,240,228,0.05);border-left:2px solid var(--neon);
   font-size:0.96rem;color:var(--text);line-height:1.55;
 }
-.service .example b{color:var(--neon);font-weight:700}
+.service .example summary{
+  cursor:pointer;list-style:none;padding:11px 17px;
+  font-family:'Space Mono',monospace;font-size:0.875rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--neon);display:flex;align-items:center;gap:8px;
+}
+.service .example summary::-webkit-details-marker{display:none}
+.service .example summary::before{content:"+";font-size:1.1rem;line-height:1}
+.service .example[open] summary::before{content:"−"}
+.service .example p{padding:0 17px 14px}
 
 /* ---------- IDEAS POR NEGOCIO ---------- */
 /* Cinta horizontal a lo ancho de la pantalla. La primera tarjeta alinea con
@@ -695,6 +679,22 @@ footer p{font-size:0.95rem;line-height:1.6}
 /* El correo no se pone en mayusculas: una direccion en versalitas se lee peor
    y no es como se escribe. */
 .footer-giant .mono .mail{text-transform:none;letter-spacing:0.06em}
+
+/* ---------- BOTÓN FLOTANTE DE WHATSAPP ----------
+   Solo en pantallas angostas: en escritorio el botón de la barra ya abre
+   WhatsApp y la barra vuelve con cualquier scroll hacia arriba. */
+.wa-fab{
+  position:fixed;right:18px;bottom:18px;z-index:70;
+  width:58px;height:58px;border-radius:50%;
+  background:#25D366;color:#fff;
+  display:none;align-items:center;justify-content:center;
+  box-shadow:0 10px 30px rgba(0,0,0,0.45),0 0 0 0 rgba(37,211,102,0.5);
+  opacity:0;transform:translateY(16px);pointer-events:none;
+  transition:opacity .25s ease,transform .25s ease;
+}
+.wa-fab svg{width:30px;height:30px}
+.wa-fab.is-on{opacity:1;transform:none;pointer-events:auto}
+@media(max-width:860px){.wa-fab{display:flex}}
 
 /* ---------- DEMO MODAL ---------- */
 .modal-overlay{
@@ -1063,7 +1063,6 @@ textarea.dapp-input{resize:none;min-height:64px}
   .hero h1{font-size:clamp(2.05rem,8.4vw,4.5rem)}
   .hero p{margin-top:20px;font-size:1.05rem}
   .hero-stats{margin-top:24px}
-  .smarquee{padding:44px 0 40px}
   section{padding:96px 0}
   .section-head{margin-bottom:44px}
   /* Sin esto el bloque del CTA arrancaba con ~260 px de vacio en movil */
@@ -1093,14 +1092,14 @@ a:focus-visible,.btn:focus-visible{outline:3px solid var(--neon);outline-offset:
     transition-property:opacity,color,background-color,border-color,box-shadow,text-shadow!important;
     transition-duration:.2s!important;
   }
-  .service:hover,.biz:hover,.stile:hover{transform:none!important}
+  .service:hover,.biz:hover{transform:none!important}
   /* El toast conserva su translateX(-50%): ahi el transform centra, no anima */
   .dapp-toast,.dapp-toast.show{transform:translateX(-50%)!important}
   .scroll-hint{display:none}
 }
 
 /* ---------- ACCESIBILIDAD: foco y objetivos tactiles ---------- */
-.biz:focus-visible,.stile:focus-visible,.faq-item summary:focus-visible{outline:3px solid var(--neon);outline-offset:3px}
+.biz:focus-visible,.faq-item summary:focus-visible{outline:3px solid var(--neon);outline-offset:3px}
 footer .footer-inner a{display:inline-block;padding:8px 2px}
 
 /* ---------- VISTA PREVIA EN LAS TARJETAS DE DEMO ----------
